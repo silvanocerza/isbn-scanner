@@ -27,4 +27,6 @@ tokio = { version = "1.48.0", features = ["macros", "rt-multi-thread"] }
 reqwest = { version = "0.12.24", features = ["json", "rustls-tls"] }
 sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "sqlite"] }
 anyhow = "1.0.100"
+tauri-plugin-clipboard = "2.1.11"
+tauri-plugin-clipboard-manager = "2"
 

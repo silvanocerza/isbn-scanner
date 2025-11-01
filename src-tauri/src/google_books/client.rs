@@ -192,7 +192,7 @@ impl GoogleBooksClient {
               ?, ?, ?, ?,
               ?, ?, ?, ?,
               ?, ?, ?, ?, ?,
-              ?, ?, ?, ?,
+              ?, ?, ?,
               ?, ?, ?,
               ?, ?
             )
@@ -238,17 +238,17 @@ impl GoogleBooksClient {
         .bind(&vi.canonical_volume_link)
         .bind(img.and_then(|i| i.small_thumbnail.clone()))
         .bind(img.and_then(|i| i.thumbnail.clone()))
-        .bind(country)
-        .bind(saleability)
+        .bind(&country)
+        .bind(&saleability)
         .bind(is_ebook)
-        .bind(viewability)
+        .bind(&viewability)
         .bind(embeddable)
         .bind(public_domain)
-        .bind(tts_perm)
+        .bind(&tts_perm)
         .bind(epub_avail)
         .bind(pdf_avail)
-        .bind(web_reader_link)
-        .bind(access_view_status)
+        .bind(&web_reader_link)
+        .bind(&access_view_status)
         .bind(quote_sharing_allowed)
         .execute(&mut *tx)
         .await?;

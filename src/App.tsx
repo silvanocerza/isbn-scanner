@@ -2,6 +2,7 @@ import { useState } from "react";
 import reactLogo from "./assets/react.svg";
 import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
+import { ClipboardListener } from "./components/ClipboardListener";
 
 function App() {
   const [greetMsg, setGreetMsg] = useState("");
@@ -12,8 +13,22 @@ function App() {
     setGreetMsg(await invoke("greet", { name }));
   }
 
+  const handleClipboardSuccess = (message: string) => {
+    // TODO: show success toast
+    console.log("Success:", message);
+  };
+
+  const handleClipboardError = (error: string) => {
+    // TODO: show error toast
+    console.error("Error:", error);
+  };
+
   return (
     <main className="container">
+      <ClipboardListener
+        onSuccess={handleClipboardSuccess}
+        onError={handleClipboardError}
+      />
       <h1>Welcome to Tauri + React</h1>
 
       <div className="row">
