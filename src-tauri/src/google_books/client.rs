@@ -1,6 +1,7 @@
 use reqwest::Client;
 use serde::Deserialize;
 use sqlx::{Sqlite, SqlitePool, Transaction};
+use tauri::Manager;
 
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
@@ -102,6 +103,7 @@ impl GoogleBooksClient {
         &self,
         pool: &SqlitePool,
         isbn: &str,
+        app_handle: &tauri::AppHandle,
     ) -> anyhow::Result<Option<String>> {
         // 1) Fetch using query params
         let resp = self
@@ -329,6 +331,34 @@ impl GoogleBooksClient {
         }
 
         tx.commit().await?;
+
+        if let Some(img) = vi.image_links.as_ref() {
+            if let Some(thumb_url) = &img.thumbnail {
+                self.download_thumbnail(&v.id, thumb_url, &app_handle)
+                    .await
+                    .ok();
+            }
+        }
+
         Ok(Some(v.id.clone()))
+    }
+
+    async fn download_thumbnail(
+        &self,
+        volume_id: &str,
+        url: &str,
+        app_handle: &tauri::AppHandle,
+    ) -> anyhow::Result<()> {
+        let img_data = self.http.get(url).send().await?.bytes().await?;
+
+        let cache_dir = app_handle.path().cache_dir()?;
+        let books_dir = cache_dir.join("books");
+
+        std::fs::create_dir_all(&books_dir)?;
+
+        let file_path = books_dir.join(format!("{}.jpg", volume_id));
+        std::fs::write(file_path, img_data)?;
+
+        Ok(())
     }
 }

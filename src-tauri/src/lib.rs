@@ -36,7 +36,7 @@ async fn fetch_isbn(
 
     match config
         .client
-        .fetch_and_store_by_isbn(sqlite_pool, &isbn)
+        .fetch_and_store_by_isbn(sqlite_pool, &isbn, &app_handle)
         .await
     {
         Ok(Some(volume_id)) => Ok(volume_id),
