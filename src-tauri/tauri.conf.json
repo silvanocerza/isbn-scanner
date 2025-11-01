@@ -9,6 +9,7 @@
     "beforeBuildCommand": "pnpm build",
     "frontendDist": "../dist"
   },
+  "plugins": { "sql": { "preload": ["sqlite:books.db"] } },
   "app": {
     "windows": [
       {
