@@ -29,4 +29,5 @@ sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "sqlite"] }
 anyhow = "1.0.100"
 tauri-plugin-clipboard = "2.1.11"
 tauri-plugin-clipboard-manager = "2"
+tauri-plugin-fs = "2"
 

@@ -7,6 +7,14 @@
     "core:default",
     "opener:default",
     "sql:default",
-    "clipboard-manager:allow-read-text"
+    "clipboard-manager:allow-read-text",
+    {
+      "identifier": "fs:allow-read-file",
+      "allow": [
+        {
+          "path": "$APPDATA/books/*"
+        }
+      ]
+    }
   ]
 }

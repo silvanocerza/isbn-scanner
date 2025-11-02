@@ -29,21 +29,30 @@ struct VolumeInfo {
     publisher: Option<String>,
     published_date: Option<String>,
     description: Option<String>,
+    #[serde(rename = "pageCount")]
     page_count: Option<i64>,
+    #[serde(rename = "printType")]
     print_type: Option<String>,
     categories: Option<Vec<String>>,
+    #[serde(rename = "maturityRating")]
     maturity_rating: Option<String>,
     language: Option<String>,
+    #[serde(rename = "previewLink")]
     preview_link: Option<String>,
+    #[serde(rename = "infoLink")]
     info_link: Option<String>,
+    #[serde(rename = "canonicalVolumeLink")]
     canonical_volume_link: Option<String>,
+    #[serde(rename = "imageLinks")]
     image_links: Option<ImageLinks>,
+    #[serde(rename = "industryIdentifiers")]
     industry_identifiers: Option<Vec<IndustryIdentifier>>,
 }
 
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
 struct ImageLinks {
+    #[serde(rename = "smallThumbnail")]
     small_thumbnail: Option<String>,
     thumbnail: Option<String>,
 }
@@ -61,6 +70,7 @@ struct IndustryIdentifier {
 struct SaleInfo {
     country: Option<String>,
     saleability: Option<String>,
+    #[serde(rename = "isEbook")]
     is_ebook: Option<bool>,
 }
 
@@ -70,18 +80,24 @@ struct AccessInfo {
     country: Option<String>,
     viewability: Option<String>,
     embeddable: Option<bool>,
+    #[serde(rename = "publicDomain")]
     public_domain: Option<bool>,
+    #[serde(rename = "textToSpeechPermission")]
     text_to_speech_permission: Option<String>,
     epub: Option<Availability>,
     pdf: Option<Availability>,
+    #[serde(rename = "webReaderLink")]
     web_reader_link: Option<String>,
+    #[serde(rename = "accessViewStatus")]
     access_view_status: Option<String>,
+    #[serde(rename = "quoteSharingAllowed")]
     quote_sharing_allowed: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
 struct Availability {
+    #[serde(rename = "isAvailable")]
     is_available: Option<bool>,
 }
 
@@ -338,6 +354,8 @@ impl GoogleBooksClient {
                     .await
                     .ok();
             }
+        } else {
+            println!("[DEBUG] Failed downloading thumbnail")
         }
 
         Ok(Some(v.id.clone()))
@@ -349,15 +367,24 @@ impl GoogleBooksClient {
         url: &str,
         app_handle: &tauri::AppHandle,
     ) -> anyhow::Result<()> {
-        let img_data = self.http.get(url).send().await?.bytes().await?;
+        println!(
+            "[DEBUG] Downloading thumbnail for {} from {}",
+            volume_id, url
+        );
 
-        let cache_dir = app_handle.path().cache_dir()?;
-        let books_dir = cache_dir.join("books");
+        let img_data = self.http.get(url).send().await?.bytes().await?;
+        println!("[DEBUG] Downloaded {} bytes", img_data.len());
+
+        let app_data_dir = app_handle.path().app_data_dir()?;
+        let books_dir = app_data_dir.join("books");
 
         std::fs::create_dir_all(&books_dir)?;
 
         let file_path = books_dir.join(format!("{}.jpg", volume_id));
-        std::fs::write(file_path, img_data)?;
+        println!("[DEBUG] Saving thumbnail to: {}", file_path.display());
+
+        std::fs::write(&file_path, img_data)?;
+        println!("[DEBUG] Thumbnail saved successfully");
 
         Ok(())
     }
