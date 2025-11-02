@@ -1,6 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { readText } from "@tauri-apps/plugin-clipboard-manager";
-import { Window } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { isPossibleIdentifier } from "../utils";
 
@@ -13,56 +12,32 @@ export function ClipboardListener({
   onSuccess,
   onError,
 }: ClipboardListenerProps) {
+  const lastClipboardRef = useRef<string>("");
   useEffect(() => {
-    let lastClipboard = "";
-    let interval: number | null = null;
-
     const checkClipboard = async () => {
       try {
-        const text = (await readText()).trim();
+        const raw = await readText();
+        const text = (raw ?? "").trim();
         if (!isPossibleIdentifier(text)) {
           return;
         }
-        if (text !== lastClipboard) {
-          lastClipboard = text;
+
+        if (text && text !== lastClipboardRef.current) {
+          lastClipboardRef.current = text;
           try {
             const result = await invoke("fetch_isbn", { isbn: text });
             onSuccess?.(result as string);
           } catch (error) {
-            onError?.(text, error as string);
+            onError?.(text, String(error));
           }
         }
-      } catch (error) {
-        console.error("Clipboard read error:", error);
+      } catch (e) {
+        console.error("Clipboard read error:", e);
       }
     };
 
-    const startPolling = () => {
-      if (!interval) {
-        interval = window.setInterval(checkClipboard, 500);
-      }
-    };
-
-    const stopPolling = () => {
-      if (interval) {
-        clearInterval(interval);
-        interval = null;
-      }
-    };
-
-    const unlistenFocus = Window.getCurrent().onFocusChanged(
-      ({ payload: focused }) => {
-        if (focused) startPolling();
-        else stopPolling();
-      },
-    );
-
-    startPolling();
-
-    return () => {
-      stopPolling();
-      unlistenFocus.then((f) => f());
-    };
+    const id = window.setInterval(checkClipboard, 500);
+    return () => clearInterval(id);
   }, [onSuccess, onError]);
 
   return null;
