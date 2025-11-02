@@ -1,15 +1,26 @@
 import "./App.css";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ClipboardListener } from "./components/ClipboardListener";
 import { BookGrid, BookWithThumbnail } from "./components/BookGrid";
 import { PillNav } from "./components/PillNav";
-import { Cog, Pencil, Plus, Download, PencilLine } from "lucide-react";
+import {
+  Cog,
+  Pencil,
+  Plus,
+  Download,
+  PencilLine,
+  Sun,
+  Moon,
+  Monitor,
+} from "lucide-react";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { Toaster, toast } from "sonner";
 import { AddBookDialog } from "./components/AddBookDialog";
 import { invoke } from "@tauri-apps/api/core";
 import { DetailsDialog } from "./components/DetailsDialog";
 import { cn } from "./utils";
+
+type Theme = "light" | "dark" | "system";
 
 function App() {
   const [editMode, setEditMode] = useState(false);
@@ -18,7 +29,27 @@ function App() {
   const [unknownISBN, setUnknownISBN] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const [theme, setTheme] = useState<Theme>(() => {
+    const saved = localStorage.getItem("theme");
+    return (saved as Theme) || "system";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("theme", theme);
+    applyTheme(theme);
+  }, [theme]);
+
+  const applyTheme = (t: Theme) => {
+    const html = document.documentElement;
+    if (t === "system") {
+      const prefersDark = window.matchMedia(
+        "(prefers-color-scheme: dark)",
+      ).matches;
+      prefersDark ? html.classList.add("dark") : html.classList.remove("dark");
+    } else {
+      t === "dark" ? html.classList.add("dark") : html.classList.remove("dark");
+    }
+  };
 
   const handleSelect = (b: BookWithThumbnail) => {
     setSelected(b);
@@ -78,6 +109,28 @@ function App() {
     }
   };
 
+  const cycleTheme = () => {
+    setTheme((prev) => {
+      if (prev === "light") {
+        return "dark";
+      }
+      if (prev === "dark") {
+        return "system";
+      }
+      return "light";
+    });
+  };
+
+  const getThemeIcon = () => {
+    if (theme === "light") {
+      return <Sun size={18} />;
+    }
+    if (theme === "dark") {
+      return <Moon size={18} />;
+    }
+    return <Monitor size={18} />;
+  };
+
   const items = [
     {
       id: "add",
@@ -103,10 +156,16 @@ function App() {
       ariaLabel: "Export",
       onClick: openExportDialog,
     },
+    {
+      id: "theme",
+      icon: getThemeIcon(),
+      ariaLabel: "Theme",
+      onClick: cycleTheme,
+    },
   ];
 
   return (
-    <div className={cn("h-screen w-screen flex flex-col", darkMode && "dark")}>
+    <div className="h-screen w-screen flex flex-col">
       <Toaster richColors />
       <ClipboardListener
         onSuccess={handleClipboardSuccess}
@@ -121,7 +180,7 @@ function App() {
             </div>
             <span
               className={cn(
-                "absolute -right-28 top-1/2 -translate-y-1/2 pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-orange-400/40 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 dark:bg-orange-400/40 transition-all duration-300",
+                "absolute -right-28 top-1/2 -translate-y-1/2 pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-orange-400/40 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 dark:bg-orange-500/30 transition-all duration-300",
                 editMode
                   ? "opacity-100 scale-100"
                   : "opacity-0 scale-95 pointer-events-none",
@@ -134,7 +193,6 @@ function App() {
         </div>
       </div>
 
-      {/* Scrollable content that goes under the header */}
       <div className="flex-1 overflow-y-auto pt-12 bg-white dark:bg-zinc-900 transition-colors">
         <BookGrid onSelect={handleSelect} />
       </div>
