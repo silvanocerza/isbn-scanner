@@ -1,21 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { X, Save } from "lucide-react";
+import { BookWithThumbnail } from "./BookGrid";
 
 export interface DetailsDialogProps {
   open: boolean;
   onClose: () => void;
-  initial: {
-    volume_id: string;
-    title: string;
-    publisher?: string | null;
-    published_date?: string | null;
-    description?: string | null;
-    page_count?: number | null;
-    language?: string | null;
-    authors: string[];
-    thumbnail_url?: string;
-  };
+  initial: BookWithThumbnail;
   editMode?: boolean;
 }
 
@@ -28,24 +19,24 @@ export function DetailsDialog({
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
-    title: initial.title,
-    publisher: initial.publisher ?? "",
-    published_date: initial.published_date ?? "",
-    description: initial.description ?? "",
-    page_count: initial.page_count?.toString() ?? "",
-    language: initial.language ?? "",
+    title: initial.book.title,
+    publisher: initial.book.publisher ?? "",
+    published_date: initial.book.published_date ?? "",
+    description: initial.book.description ?? "",
+    page_count: initial.book.page_count?.toString() ?? "",
+    language: initial.book.language ?? "",
     authors: initial.authors.join(", "),
   });
 
   useEffect(() => {
     setForm({
-      title: initial.title,
-      publisher: initial.publisher ?? "",
-      published_date: initial.published_date ?? "",
-      description: initial.description ?? "",
-      page_count: initial.page_count?.toString() ?? "",
-      language: initial.language ?? "",
-      authors: initial.authors.join(", "),
+      title: initial.book.title,
+      publisher: initial.book.publisher ?? "",
+      published_date: initial.book.published_date ?? "",
+      description: initial.book.description ?? "",
+      page_count: initial.book.page_count?.toString() ?? "",
+      language: initial.book.language ?? "",
+      authors: initial.authors.map((a) => a.name.trim()).join(", "),
     });
   }, [initial, editMode]);
 
@@ -54,18 +45,18 @@ export function DetailsDialog({
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
-    const origAuthors = initial.authors.map((s) => s.trim());
+    const origAuthors = initial.authors.map((a) => a.name.trim());
     const eqAuthors =
       authorsArr.length === origAuthors.length &&
       authorsArr.every((a, i) => a === origAuthors[i]);
 
     return !(
-      form.title === initial.title &&
-      (form.publisher || "") === (initial.publisher || "") &&
-      (form.published_date || "") === (initial.published_date || "") &&
-      (form.description || "") === (initial.description || "") &&
-      (form.page_count || "") === (initial.page_count?.toString() || "") &&
-      (form.language || "") === (initial.language || "") &&
+      form.title === initial.book.title &&
+      (form.publisher || "") === (initial.book.publisher || "") &&
+      (form.published_date || "") === (initial.book.published_date || "") &&
+      (form.description || "") === (initial.book.description || "") &&
+      (form.page_count || "") === (initial.book.page_count?.toString() || "") &&
+      (form.language || "") === (initial.book.language || "") &&
       eqAuthors
     );
   }, [form, initial]);
@@ -95,7 +86,7 @@ export function DetailsDialog({
         .filter(Boolean);
       await invoke("update_book", {
         payload: {
-          volume_id: initial.volume_id,
+          volume_id: initial.book.volume_id,
           title: form.title,
           publisher: form.publisher || null,
           published_date: form.published_date || null,
@@ -128,7 +119,7 @@ export function DetailsDialog({
       <div className="relative w-full max-w-3xl mx-4 animate-in fade-in slide-in-from-top-4 duration-200">
         <div className="rounded-xl bg-white shadow-2xl ring-1 ring-black/10 overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b bg-linear-to-b from-gray-50/50 to-white">
+          <div className="flex items-center justify-between px-6 py-4">
             <div className="min-w-0 flex-1">
               <h2 className="text-xl font-semibold text-gray-900 truncate">
                 {form.title}
@@ -137,7 +128,7 @@ export function DetailsDialog({
                 {form.authors}
               </h2>
               <p className="text-sm text-gray-500 mt-0.5">
-                {initial.volume_id.slice(0, 12)} ·{" "}
+                {initial.book.volume_id.slice(0, 12)} ·{" "}
                 {form.language || "Unknown language"}
               </p>
             </div>
@@ -157,10 +148,10 @@ export function DetailsDialog({
             {/* Left rail */}
             <div className="flex flex-row gap-4 ">
               <div className="w-[180px] aspect-2/3 overflow-hidden rounded-xl bg-linear-to-br from-gray-100 to-gray-200 ring-1 ring-gray-300/50 shadow-sm">
-                {initial.thumbnail_url ? (
+                {initial.thumbnail_path ? (
                   <img
-                    src={initial.thumbnail_url}
-                    alt={initial.title}
+                    src={initial.thumbnail_path}
+                    alt={initial.book.title}
                     className="h-full w-full object-cover"
                   />
                 ) : (
@@ -171,48 +162,32 @@ export function DetailsDialog({
               </div>
               <div className="flex-1 rounded-xl bg-linear-to-br from-blue-50 to-indigo-50 p-4 text-sm ring-1 ring-blue-100 shadow-sm">
                 <div className="space-y-2.5">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600 font-medium">Pages</span>
-                    <span className="text-gray-900 font-semibold">
-                      {form.page_count || "—"}
-                    </span>
-                  </div>
+                  <InfoRow label="Pages" value={initial.book.page_count} />
                   <div className="h-px bg-blue-100/50" />
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600 font-medium">Publisher</span>
-                    <span
-                      className="text-gray-900 font-semibold truncate max-w-[90px]"
-                      title={form.publisher || undefined}
-                    >
-                      {form.publisher || "—"}
-                    </span>
-                  </div>
+                  <InfoRow label="Publisher" value={initial.book.publisher} />
                   <div className="h-px bg-blue-100/50" />
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600 font-medium">Year</span>
-                    <span className="text-gray-900 font-semibold">
-                      {form.published_date || "—"}
-                    </span>
-                  </div>
+                  <InfoRow label="Year" value={initial.book.published_date} />
+                  <div className="h-px bg-blue-100/50" />
+                  <InfoRow label="Print Type" value={initial.book.print_type} />
+                  <div className="h-px bg-blue-100/50" />
+                  <InfoRow label="Language" value={initial.book.language} />
                 </div>
               </div>
             </div>
 
-            {/* Fields */}
-            {editMode && (
-              <div className="space-y-5">
+            {/* Right side */}
+            {editMode ? (
+              <div className="space-y-5 max-h-[600px] overflow-y-auto">
                 <Field
                   label="Title"
                   value={form.title}
                   onChange={(v) => setForm((f) => ({ ...f, title: v }))}
-                  disabled={!editMode}
                 />
                 <div className="grid grid-cols-2 gap-4">
                   <Field
                     label="Publisher"
                     value={form.publisher}
                     onChange={(v) => setForm((f) => ({ ...f, publisher: v }))}
-                    disabled={!editMode}
                   />
                   <Field
                     label="Year"
@@ -220,36 +195,235 @@ export function DetailsDialog({
                     onChange={(v) =>
                       setForm((f) => ({ ...f, published_date: v }))
                     }
-                    disabled={!editMode}
                   />
                 </div>
                 <Field
                   label="Authors (comma-separated)"
                   value={form.authors}
                   onChange={(v) => setForm((f) => ({ ...f, authors: v }))}
-                  disabled={!editMode}
                 />
                 <TextArea
                   label="Description"
                   value={form.description}
                   onChange={(v) => setForm((f) => ({ ...f, description: v }))}
-                  disabled={!editMode}
                 />
                 <div className="grid grid-cols-2 gap-4">
                   <Field
                     label="Pages"
                     value={form.page_count}
                     onChange={(v) => setForm((f) => ({ ...f, page_count: v }))}
-                    disabled={!editMode}
                     inputMode="numeric"
                   />
                   <Field
                     label="Language"
                     value={form.language}
                     onChange={(v) => setForm((f) => ({ ...f, language: v }))}
-                    disabled={!editMode}
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field
+                    label="Print Type"
+                    value={initial.book.print_type ?? ""}
+                    onChange={() => {}}
+                    disabled
+                  />
+                  <Field
+                    label="Maturity Rating"
+                    value={initial.book.maturity_rating ?? ""}
+                    onChange={() => {}}
+                    disabled
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field
+                    label="Country"
+                    value={initial.book.country ?? ""}
+                    onChange={() => {}}
+                    disabled
+                  />
+                  <Field
+                    label="Saleability"
+                    value={initial.book.saleability ?? ""}
+                    onChange={() => {}}
+                    disabled
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field
+                    label="Viewability"
+                    value={initial.book.viewability ?? ""}
+                    onChange={() => {}}
+                    disabled
+                  />
+                  <Field
+                    label="Text to Speech"
+                    value={initial.book.text_to_speech_permission ?? ""}
+                    onChange={() => {}}
+                    disabled
+                  />
+                </div>
+                <Field
+                  label="Access View Status"
+                  value={initial.book.access_view_status ?? ""}
+                  onChange={() => {}}
+                  disabled
+                />
+                <div className="grid grid-cols-3 gap-4">
+                  <Field
+                    label="Is Ebook"
+                    value={initial.book.is_ebook ? "Yes" : "No"}
+                    onChange={() => {}}
+                    disabled
+                  />
+                  <Field
+                    label="Public Domain"
+                    value={initial.book.public_domain ? "Yes" : "No"}
+                    onChange={() => {}}
+                    disabled
+                  />
+                  <Field
+                    label="Embeddable"
+                    value={initial.book.embeddable ? "Yes" : "No"}
+                    onChange={() => {}}
+                    disabled
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <Field
+                    label="EPUB Available"
+                    value={initial.book.epub_available ? "Yes" : "No"}
+                    onChange={() => {}}
+                    disabled
+                  />
+                  <Field
+                    label="PDF Available"
+                    value={initial.book.pdf_available ? "Yes" : "No"}
+                    onChange={() => {}}
+                    disabled
+                  />
+                  <Field
+                    label="Quote Sharing"
+                    value={initial.book.quote_sharing_allowed ? "Yes" : "No"}
+                    onChange={() => {}}
+                    disabled
+                  />
+                </div>
+
+                <ViewField
+                  label="Preview Link"
+                  value={initial.book.preview_link}
+                  isLink
+                />
+                <ViewField
+                  label="Info Link"
+                  value={initial.book.info_link}
+                  isLink
+                />
+                <ViewField
+                  label="Canonical Link"
+                  value={initial.book.canonical_link}
+                  isLink
+                />
+                <ViewField
+                  label="Web Reader Link"
+                  value={initial.book.web_reader_link}
+                  isLink
+                />
+              </div>
+            ) : (
+              <div className="space-y-4 max-h-[600px] overflow-y-auto">
+                <ViewField label="Title" value={form.title} />
+                <div className="grid grid-cols-2 gap-4">
+                  <ViewField label="Publisher" value={form.publisher} />
+                  <ViewField label="Year" value={form.published_date} />
+                </div>
+                <ViewField label="Authors" value={form.authors} />
+                <ViewField
+                  label="Description"
+                  value={form.description}
+                  multiline
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <ViewField label="Pages" value={form.page_count} />
+                  <ViewField label="Language" value={form.language} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <ViewField
+                    label="Print Type"
+                    value={initial.book.print_type}
+                  />
+                  <ViewField
+                    label="Maturity Rating"
+                    value={initial.book.maturity_rating}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <ViewField label="Country" value={initial.book.country} />
+                  <ViewField
+                    label="Saleability"
+                    value={initial.book.saleability}
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <ViewField
+                    label="Is Ebook"
+                    value={initial.book.is_ebook ? "Yes" : "No"}
+                  />
+                  <ViewField
+                    label="Public Domain"
+                    value={initial.book.public_domain ? "Yes" : "No"}
+                  />
+                  <ViewField
+                    label="Embeddable"
+                    value={initial.book.embeddable ? "Yes" : "No"}
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <ViewField
+                    label="EPUB Available"
+                    value={initial.book.epub_available ? "Yes" : "No"}
+                  />
+                  <ViewField
+                    label="PDF Available"
+                    value={initial.book.pdf_available ? "Yes" : "No"}
+                  />
+                  <ViewField
+                    label="Quote Sharing Allowed"
+                    value={initial.book.quote_sharing_allowed ? "Yes" : "No"}
+                  />
+                </div>
+                <ViewField
+                  label="Text to Speech"
+                  value={initial.book.text_to_speech_permission}
+                />
+                <ViewField
+                  label="Viewability"
+                  value={initial.book.viewability}
+                />
+                <ViewField
+                  label="Access View Status"
+                  value={initial.book.access_view_status}
+                />
+                <ViewField
+                  label="Preview Link"
+                  value={initial.book.preview_link}
+                  isLink
+                />
+                <ViewField
+                  label="Info Link"
+                  value={initial.book.info_link}
+                  isLink
+                />
+                <ViewField
+                  label="Canonical Link"
+                  value={initial.book.canonical_link}
+                  isLink
+                />
+                <ViewField
+                  label="Web Reader Link"
+                  value={initial.book.web_reader_link}
+                  isLink
+                />
               </div>
             )}
           </div>
@@ -335,5 +509,49 @@ function TextArea({
         disabled={disabled}
       />
     </label>
+  );
+}
+function InfoRow({ label, value }: { label: string; value: any }) {
+  return (
+    <div className="flex justify-between items-center">
+      <span className="text-gray-600 font-medium">{label}</span>
+      <span className="text-gray-900 font-semibold truncate">
+        {value || "—"}
+      </span>
+    </div>
+  );
+}
+
+function ViewField({
+  label,
+  value,
+  multiline,
+  isLink,
+}: {
+  label: string;
+  value: any;
+  multiline?: boolean;
+  isLink?: boolean;
+}) {
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-gray-700 mb-1">{label}</h3>
+      <p
+        className={`text-gray-900 text-sm ${multiline ? "whitespace-pre-wrap" : ""}`}
+      >
+        {isLink && value ? (
+          <a
+            href={value}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:underline break-all"
+          >
+            {value}
+          </a>
+        ) : (
+          value || "—"
+        )}
+      </p>
+    </div>
   );
 }

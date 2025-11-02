@@ -12,6 +12,23 @@ export interface Book {
   description?: string | null;
   page_count?: number | null;
   language?: string | null;
+  print_type?: string | null;
+  maturity_rating?: string | null;
+  preview_link?: string | null;
+  info_link?: string | null;
+  canonical_link?: string | null;
+  country?: string | null;
+  saleability?: string | null;
+  is_ebook?: boolean | null;
+  viewability?: string | null;
+  embeddable?: boolean | null;
+  public_domain?: boolean | null;
+  text_to_speech_permission?: string | null;
+  epub_available?: boolean | null;
+  pdf_available?: boolean | null;
+  web_reader_link?: string | null;
+  access_view_status?: string | null;
+  quote_sharing_allowed?: boolean | null;
 }
 
 export interface BookWithThumbnail {
@@ -23,17 +40,7 @@ export interface BookWithThumbnail {
 export function BookGrid({
   onSelect,
 }: {
-  onSelect: (b: {
-    volume_id: string;
-    title: string;
-    publisher?: string | null;
-    published_date?: string | null;
-    description?: string | null;
-    page_count?: number | null;
-    language?: string | null;
-    authors: string[];
-    thumbnail_url?: string;
-  }) => void;
+  onSelect: (b: BookWithThumbnail) => void;
 }) {
   const [books, setBooks] = useState<BookWithThumbnail[]>([]);
   const [images, setImages] = useState<Record<string, string>>({});
@@ -92,17 +99,7 @@ export function BookGrid({
             key={item.book.volume_id}
             className="w-[180px]"
             onClick={() =>
-              onSelect({
-                volume_id: item.book.volume_id,
-                title: item.book.title,
-                publisher: item.book.publisher ?? null,
-                published_date: item.book.published_date ?? null,
-                description: item.book.description ?? null,
-                page_count: item.book.page_count ?? null,
-                language: item.book.language ?? null,
-                authors: item.authors.map((a) => a.name),
-                thumbnail_url: images[item.book.volume_id],
-              })
+              onSelect({ ...item, thumbnail_path: images[item.book.volume_id] })
             }
           >
             <div className="group rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-xl transition">

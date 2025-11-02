@@ -1,7 +1,7 @@
 import "./App.css";
 import { useState } from "react";
 import { ClipboardListener } from "./components/ClipboardListener";
-import { BookGrid } from "./components/BookGrid";
+import { BookGrid, BookWithThumbnail } from "./components/BookGrid";
 import { PillNav } from "./components/PillNav";
 import { Cog, Pencil, Plus, Download, PencilLine } from "lucide-react";
 import { SettingsDialog } from "./components/SettingsDialog";
@@ -11,27 +11,15 @@ import { invoke } from "@tauri-apps/api/core";
 import { DetailsDialog } from "./components/DetailsDialog";
 import { cn } from "./utils";
 
-type SelectedBook = {
-  volume_id: string;
-  title: string;
-  publisher?: string | null;
-  published_date?: string | null;
-  description?: string | null;
-  page_count?: number | null;
-  language?: string | null;
-  authors: string[];
-  thumbnail_url?: string;
-};
-
 function App() {
   const [editMode, setEditMode] = useState(false);
-  const [selected, setSelected] = useState<SelectedBook | null>(null);
+  const [selected, setSelected] = useState<BookWithThumbnail | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [unknownISBN, setUnknownISBN] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const handleSelect = (b: SelectedBook) => {
+  const handleSelect = (b: BookWithThumbnail) => {
     setSelected(b);
     setDetailsOpen(true);
   };

@@ -33,6 +33,7 @@ pub struct Book {
     pub access_view_status: Option<String>,
     pub quote_sharing_allowed: Option<i64>,
 }
+
 #[derive(Debug, Serialize, FromRow)]
 pub struct Author {
     pub name: String,
