@@ -1,6 +1,7 @@
 mod db;
 mod google_books;
 mod migrations;
+mod settings;
 
 use tauri::Emitter;
 use tauri::Manager;
@@ -15,12 +16,23 @@ pub struct AppConfig {
 
 impl AppConfig {
     pub async fn from_env() -> Result<Self, String> {
-        let api_key = std::env::var("GOOGLE_BOOKS_API_KEY")
-            .map_err(|_| "GOOGLE_BOOKS_API_KEY not set".to_string())?;
         Ok(AppConfig {
-            client: GoogleBooksClient::new(&api_key),
+            client: GoogleBooksClient::new(),
         })
     }
+}
+
+#[tauri::command]
+fn get_settings(app_handle: tauri::AppHandle) -> Result<crate::settings::AppSettings, String> {
+    crate::settings::load_settings(&app_handle)
+}
+
+#[tauri::command]
+fn set_settings(
+    app_handle: tauri::AppHandle,
+    next: crate::settings::AppSettings,
+) -> Result<(), String> {
+    crate::settings::save_settings(&app_handle, &next)
 }
 
 #[tauri::command]
@@ -31,14 +43,19 @@ async fn fetch_isbn(
 ) -> Result<String, String> {
     let instances = app_handle.state::<DbInstances>();
     let guard = instances.0.read().await;
-
     let pool = guard.get("sqlite:books.db").ok_or("Database not found")?;
-
     let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
+
+    // Load settings on demand from the store
+    let settings = crate::settings::load_settings(&app_handle)?;
+    let api_key = settings
+        .google_books_api_key
+        .as_deref()
+        .ok_or_else(|| "Google Books API key not configured".to_string())?;
 
     match config
         .client
-        .fetch_and_store_by_isbn(sqlite_pool, &isbn, &app_handle)
+        .fetch_and_store_by_isbn(sqlite_pool, &isbn, &app_handle, api_key)
         .await
     {
         Ok(Some(volume_id)) => {
@@ -72,6 +89,7 @@ pub fn run() {
         tauri::async_runtime::block_on(AppConfig::from_env()).expect("Failed to load config");
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(
@@ -81,7 +99,12 @@ pub fn run() {
         )
         .manage(config)
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![fetch_isbn, get_all_books])
+        .invoke_handler(tauri::generate_handler![
+            fetch_isbn,
+            get_all_books,
+            get_settings,
+            set_settings,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

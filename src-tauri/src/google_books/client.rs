@@ -103,14 +103,12 @@ struct Availability {
 
 pub struct GoogleBooksClient {
     http: Client,
-    api_key: String,
 }
 
 impl GoogleBooksClient {
-    pub fn new(api_key: impl Into<String>) -> Self {
+    pub fn new() -> Self {
         Self {
             http: Client::new(),
-            api_key: api_key.into(),
         }
     }
 
@@ -120,12 +118,13 @@ impl GoogleBooksClient {
         pool: &SqlitePool,
         isbn: &str,
         app_handle: &tauri::AppHandle,
+        api_key: &str,
     ) -> anyhow::Result<Option<String>> {
         // 1) Fetch using query params
         let resp = self
             .http
             .get("https://www.googleapis.com/books/v1/volumes")
-            .query(&[("q", format!("isbn:{isbn}")), ("key", self.api_key.clone())])
+            .query(&[("q", format!("isbn:{isbn}")), ("key", api_key.to_string())])
             .send()
             .await?
             .error_for_status()?

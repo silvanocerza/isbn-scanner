@@ -15,6 +15,7 @@
           "path": "$APPDATA/books/*"
         }
       ]
-    }
+    },
+    "store:default"
   ]
 }
