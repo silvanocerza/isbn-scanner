@@ -91,14 +91,19 @@ export function BookGrid() {
                 )}
               </div>
             </div>
-
-            <div className="p-3 flex-1 flex flex-col">
-              <h3 className="font-medium text-[15px] text-gray-900 leading-snug line-clamp-2">
+            <div className="py-3 px-1">
+              <h2
+                className="font-semibold text-md text-gray-900"
+                title={item.book.title}
+              >
                 {item.book.title}
-              </h3>
-              <h4>{item.authors.map((a) => a.name)}</h4>
+              </h2>
+
+              <h4 className="text-sm text-gray-700">
+                {item.authors.map((a) => a.name).join(", ")}
+              </h4>
               {item.book.publisher && (
-                <p className="mt-1 text-[12px] text-gray-600 leading-tight line-clamp-1">
+                <p className="mt-1 text-[12px] text-gray-600 leading-tight">
                   {item.book.publisher}
                 </p>
               )}
