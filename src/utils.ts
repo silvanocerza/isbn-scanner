@@ -24,3 +24,7 @@ export function isValidISBN(text: string): boolean {
 
   return false;
 }
+
+export function cn(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ");
+}
