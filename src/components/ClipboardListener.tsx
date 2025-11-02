@@ -25,8 +25,12 @@ export function ClipboardListener({
         if (text && text !== lastClipboardRef.current) {
           lastClipboardRef.current = text;
           try {
-            const result = await invoke("fetch_isbn", { isbn: text });
-            onSuccess?.(result as string);
+            const exists = await invoke<boolean>("isbn_exists", { isbn: text });
+            if (exists) {
+              return;
+            }
+            const result = await invoke<string>("fetch_isbn", { isbn: text });
+            onSuccess?.(result);
           } catch (error) {
             onError?.(text, String(error));
           }

@@ -97,6 +97,18 @@ pub async fn add_book(
 }
 
 #[tauri::command]
+pub async fn isbn_exists(isbn: String, app_handle: tauri::AppHandle) -> Result<bool, String> {
+    let instances = app_handle.state::<DbInstances>();
+    let guard = instances.0.read().await;
+    let pool = guard.get("sqlite:books.db").ok_or("Database not found")?;
+
+    let exists = crate::db::isbn_exists(pool, &isbn)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(exists)
+}
+
+#[tauri::command]
 pub async fn update_book(
     payload: crate::db::UpdateBookPayload,
     app_handle: tauri::AppHandle,

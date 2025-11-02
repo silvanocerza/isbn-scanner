@@ -3,8 +3,6 @@ use serde::Deserialize;
 use sqlx::{Sqlite, Transaction};
 use tauri::Manager;
 
-use crate::db::{isbn_exists, volume_title_by_isbn};
-
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
 struct VolumesResponse {
@@ -122,16 +120,6 @@ impl GoogleBooksClient {
         app_handle: &tauri::AppHandle,
         api_key: &str,
     ) -> anyhow::Result<Option<String>> {
-        if isbn_exists(pool, isbn).await? {
-            if let Some(title) = volume_title_by_isbn(pool, isbn).await? {
-                return Ok(Some(title));
-            } else {
-                // Extremely unlikely: exists check passed but lookup failed.
-                // Fall through to fetch or return None; choose one:
-                return Ok(None);
-            }
-        }
-
         let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
 
         // 1) Fetch using query params
