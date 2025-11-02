@@ -122,11 +122,8 @@ export function BookGrid({
                     className="absolute inset-0 h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-blue-300 dark:bg-blue-900">
-                    <BookIcon
-                      size={32}
-                      className="text-white/80 dark:text-white/60"
-                    />
+                  <div className="absolute inset-0 flex items-center justify-center text-sm font-medium text-gray-400 dark:text-gray-500">
+                    No cover
                   </div>
                 )}
               </div>
