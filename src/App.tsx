@@ -142,6 +142,18 @@ function App() {
 
   const items = [
     {
+      id: "export",
+      icon: <Download size={18} />,
+      ariaLabel: "Export",
+      onClick: openExportDialog,
+    },
+    {
+      id: "theme",
+      icon: getThemeIcon(),
+      ariaLabel: "Theme",
+      onClick: cycleTheme,
+    },
+    {
       id: "add",
       icon: <Plus size={18} />,
       ariaLabel: "Add",
@@ -153,23 +165,12 @@ function App() {
       ariaLabel: "Edit",
       onClick: toggleEditMode,
     },
+
     {
       id: "settings",
       icon: <Cog size={18} />,
       ariaLabel: "Settings",
       onClick: openSettingsDialog,
-    },
-    {
-      id: "export",
-      icon: <Download size={18} />,
-      ariaLabel: "Export",
-      onClick: openExportDialog,
-    },
-    {
-      id: "theme",
-      icon: getThemeIcon(),
-      ariaLabel: "Theme",
-      onClick: cycleTheme,
     },
   ];
 
