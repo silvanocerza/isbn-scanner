@@ -43,6 +43,7 @@ pub struct Author {
 pub struct BookWithThumbnail {
     pub book: Book,
     pub authors: Vec<Author>,
+    pub isbns: Vec<String>,
     pub thumbnail_path: String,
 }
 
@@ -128,10 +129,23 @@ pub async fn fetch_all_books(
         .fetch_all(sqlite_pool)
         .await?;
 
+        let isbns = sqlx::query_scalar::<_, String>(
+            r#"
+            SELECT identifier
+            FROM book_identifiers
+            WHERE volume_id = ?
+            ORDER BY type DESC
+            "#,
+        )
+        .bind(&book.volume_id)
+        .fetch_all(sqlite_pool)
+        .await?;
+
         let thumbnail_path = books_dir.join(format!("{}.jpg", book.volume_id));
         result.push(BookWithThumbnail {
             book,
             authors,
+            isbns,
             thumbnail_path: thumbnail_path.to_string_lossy().to_string(),
         });
     }

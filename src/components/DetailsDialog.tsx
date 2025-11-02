@@ -126,6 +126,7 @@ export function DetailsDialog({
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                 {initial.book.volume_id.slice(0, 12)} ·{" "}
+                {initial.isbns.join(", ")} ·{" "}
                 {form.language || "Unknown language"}
               </p>
             </div>

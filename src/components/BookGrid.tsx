@@ -33,6 +33,7 @@ export interface Book {
 export interface BookWithThumbnail {
   book: Book;
   authors: { name: string }[];
+  isbns: string[];
   thumbnail_path: string;
 }
 
