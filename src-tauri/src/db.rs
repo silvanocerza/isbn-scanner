@@ -55,7 +55,38 @@ pub struct UpdateBookPayload {
     pub description: Option<String>,
     pub page_count: Option<i64>,
     pub language: Option<String>,
-    pub authors: Vec<String>, // full replacement order-preserved
+    pub authors: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BookCSVRow {
+    pub volume_id: String,
+    pub title: String,
+    pub authors: String,
+    pub publisher: Option<String>,
+    pub published_date: Option<String>,
+    pub description: Option<String>,
+    pub page_count: Option<i64>,
+    pub language: Option<String>,
+    pub preview_link: Option<String>,
+    pub info_link: Option<String>,
+    pub canonical_link: Option<String>,
+    pub web_reader_link: Option<String>,
+}
+
+#[derive(sqlx::FromRow)]
+struct BookRow {
+    pub volume_id: String,
+    pub title: String,
+    pub publisher: Option<String>,
+    pub published_date: Option<String>,
+    pub description: Option<String>,
+    pub page_count: Option<i64>,
+    pub language: Option<String>,
+    pub preview_link: Option<String>,
+    pub info_link: Option<String>,
+    pub canonical_link: Option<String>,
+    pub web_reader_link: Option<String>,
 }
 
 pub async fn fetch_all_books(
@@ -301,5 +332,73 @@ pub async fn update_book(
     }
 
     tx.commit().await?;
+    Ok(())
+}
+
+pub async fn export_books_to_csv(
+    pool: &tauri_plugin_sql::DbPool,
+    save_path: &std::path::Path,
+) -> anyhow::Result<()> {
+    let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
+
+    let books = sqlx::query_as::<_, BookRow>(
+        r#"
+        SELECT
+            b.volume_id, b.title, b.publisher, b.published_date,
+            b.description, b.page_count, b.language,
+            b.preview_link, b.info_link, b.canonical_link, b.web_reader_link
+        FROM books b
+        ORDER BY b.title
+        "#,
+    )
+    .fetch_all(sqlite_pool)
+    .await?;
+
+    let mut csv_rows = Vec::new();
+
+    for book in books {
+        let authors = sqlx::query_as::<_, Author>(
+            r#"
+            SELECT a.name
+            FROM authors a
+            JOIN book_authors ba ON a.author_id = ba.author_id
+            WHERE ba.volume_id = ?
+            ORDER BY ba.position
+            "#,
+        )
+        .bind(&book.volume_id)
+        .fetch_all(sqlite_pool)
+        .await?;
+
+        let authors_str = authors
+            .iter()
+            .map(|a| a.name.clone())
+            .collect::<Vec<_>>()
+            .join("; ");
+
+        csv_rows.push(BookCSVRow {
+            volume_id: book.volume_id,
+            title: book.title,
+            authors: authors_str,
+            publisher: book.publisher,
+            published_date: book.published_date,
+            description: book.description,
+            page_count: book.page_count,
+            language: book.language,
+            preview_link: book.preview_link,
+            info_link: book.info_link,
+            canonical_link: book.canonical_link,
+            web_reader_link: book.web_reader_link,
+        });
+    }
+
+    let file = std::fs::File::create(save_path)?;
+    let mut wtr = csv::Writer::from_writer(file);
+
+    for row in csv_rows {
+        wtr.serialize(&row)?;
+    }
+
+    wtr.flush()?;
     Ok(())
 }

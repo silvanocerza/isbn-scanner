@@ -2,7 +2,6 @@ import { invoke } from "@tauri-apps/api/core";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { BookIcon } from "lucide-react";
 
 export interface Book {
   volume_id: string;

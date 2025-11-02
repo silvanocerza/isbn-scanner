@@ -69,8 +69,13 @@ function App() {
     setSettingsOpen(true);
   };
 
-  const openExportDialog = () => {
-    console.log("Export clicked");
+  const openExportDialog = async () => {
+    try {
+      const message = await invoke<string>("export_books_csv");
+      toast.success(message);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
   };
 
   const items = [

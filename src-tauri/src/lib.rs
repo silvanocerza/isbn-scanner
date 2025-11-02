@@ -26,6 +26,7 @@ pub fn run() {
         tauri::async_runtime::block_on(AppConfig::from_env()).expect("Failed to load config");
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_clipboard_manager::init())
@@ -43,6 +44,7 @@ pub fn run() {
             crate::commands::set_settings,
             crate::commands::add_book,
             crate::commands::update_book,
+            crate::commands::export_books_csv,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

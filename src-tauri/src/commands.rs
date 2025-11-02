@@ -1,6 +1,7 @@
 use tauri::Emitter;
 use tauri::Manager;
 use tauri::State;
+use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_sql::DbInstances;
 
 use crate::AppConfig;
@@ -108,4 +109,35 @@ pub async fn update_book(
         .map_err(|e| e.to_string())?;
     let _ = app_handle.emit("book-updated", &"ok");
     Ok(())
+}
+
+#[tauri::command]
+pub async fn export_books_csv(app_handle: tauri::AppHandle) -> Result<String, String> {
+    let path = app_handle
+        .dialog()
+        .file()
+        .add_filter("CSV", &["csv"])
+        .set_file_name("books.csv")
+        .blocking_save_file();
+
+    let Some(save_path) = path else {
+        return Err("Export cancelled".to_string());
+    };
+
+    let path_buf = match save_path {
+        tauri_plugin_dialog::FilePath::Path(p) => p,
+        tauri_plugin_dialog::FilePath::Url(u) => {
+            return Err(format!("URL paths not supported: {}", u));
+        }
+    };
+
+    let instances = app_handle.state::<DbInstances>();
+    let guard = instances.0.read().await;
+    let pool = guard.get("sqlite:books.db").ok_or("Database not found")?;
+
+    crate::db::export_books_to_csv(pool, &path_buf)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(format!("Books exported to {}", path_buf.display()))
 }
