@@ -18,6 +18,7 @@ function App() {
   const [unknownISBN, setUnknownISBN] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
 
   const handleSelect = (b: BookWithThumbnail) => {
     setSelected(b);
@@ -100,7 +101,7 @@ function App() {
   ];
 
   return (
-    <div className="h-screen w-screen flex flex-col">
+    <div className={cn("h-screen w-screen flex flex-col", darkMode && "dark")}>
       <Toaster richColors />
       <ClipboardListener
         onSuccess={handleClipboardSuccess}
@@ -115,7 +116,7 @@ function App() {
             </div>
             <span
               className={cn(
-                "absolute -right-28 top-1/2 -translate-y-1/2 pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-orange-400/40 px-3 py-1.5 text-xs font-medium text-gray-700 transition-all duration-300",
+                "absolute -right-28 top-1/2 -translate-y-1/2 pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-orange-400/40 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 dark:bg-orange-400/40 transition-all duration-300",
                 editMode
                   ? "opacity-100 scale-100"
                   : "opacity-0 scale-95 pointer-events-none",
@@ -129,7 +130,7 @@ function App() {
       </div>
 
       {/* Scrollable content that goes under the header */}
-      <div className="flex-1 overflow-y-auto pt-12">
+      <div className="flex-1 overflow-y-auto pt-12 bg-white dark:bg-zinc-900 transition-colors">
         <BookGrid onSelect={handleSelect} />
       </div>
 

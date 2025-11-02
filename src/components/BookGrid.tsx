@@ -82,13 +82,23 @@ export function BookGrid({
   }, []);
 
   if (loading) {
-    return <div className="p-4">Loading books...</div>;
+    return (
+      <div className="p-4 text-gray-700 dark:text-gray-300">
+        Loading books...
+      </div>
+    );
   }
   if (error) {
-    return <div className="p-4 text-red-600">Error: {error}</div>;
+    return (
+      <div className="p-4 text-red-600 dark:text-red-400">Error: {error}</div>
+    );
   }
   if (books.length === 0) {
-    return <div className="p-4">No books scanned yet</div>;
+    return (
+      <div className="p-4 text-gray-700 dark:text-gray-300">
+        No books scanned yet
+      </div>
+    );
   }
 
   return (
@@ -102,8 +112,8 @@ export function BookGrid({
               onSelect({ ...item, thumbnail_path: images[item.book.volume_id] })
             }
           >
-            <div className="group rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-xl transition">
-              <div className="relative w-full aspect-2/3 bg-gray-100">
+            <div className="group rounded-xl overflow-hidden bg-white dark:bg-zinc-800 shadow-sm hover:shadow-xl dark:hover:shadow-xl dark:shadow-black/50 transition">
+              <div className="relative w-full aspect-2/3 bg-gray-100 dark:bg-zinc-700">
                 {images[item.book.volume_id] ? (
                   <img
                     src={images[item.book.volume_id]}
@@ -112,25 +122,28 @@ export function BookGrid({
                     className="absolute inset-0 h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-blue-300">
-                    <BookIcon size={32} className="text-white/80" />
+                  <div className="absolute inset-0 flex items-center justify-center bg-blue-300 dark:bg-blue-900">
+                    <BookIcon
+                      size={32}
+                      className="text-white/80 dark:text-white/60"
+                    />
                   </div>
                 )}
               </div>
             </div>
             <div className="py-3 px-1">
               <h2
-                className="font-semibold text-md text-gray-900"
+                className="font-semibold text-md text-gray-900 dark:text-white"
                 title={item.book.title}
               >
                 {item.book.title}
               </h2>
 
-              <h4 className="text-sm text-gray-700">
+              <h4 className="text-sm text-gray-700 dark:text-gray-400">
                 {item.authors.map((a) => a.name).join(", ")}
               </h4>
               {item.book.publisher && (
-                <p className="mt-1 text-[12px] text-gray-600 leading-tight">
+                <p className="mt-1 text-[12px] text-gray-600 dark:text-gray-500 leading-tight">
                   {item.book.publisher}
                 </p>
               )}

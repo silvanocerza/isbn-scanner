@@ -108,33 +108,30 @@ export function DetailsDialog({
 
   return (
     <div className="fixed inset-0 z-60 flex items-start justify-center pt-16">
-      {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm transition-opacity"
         onClick={onClose}
         aria-hidden
       />
 
-      {/* Panel */}
       <div className="relative w-full max-w-3xl mx-4 animate-in fade-in slide-in-from-top-4 duration-200">
-        <div className="rounded-xl bg-white shadow-2xl ring-1 ring-black/10 overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4">
+        <div className="rounded-xl bg-white dark:bg-zinc-800 shadow-2xl ring-1 ring-black/10 dark:ring-white/10 overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-zinc-700">
             <div className="min-w-0 flex-1">
-              <h2 className="text-xl font-semibold text-gray-900 truncate">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white truncate">
                 {form.title}
               </h2>
-              <h2 className="text-md font-medium text-gray-900 truncate">
+              <h2 className="text-md font-medium text-gray-900 dark:text-gray-200 truncate">
                 {form.authors}
               </h2>
-              <p className="text-sm text-gray-500 mt-0.5">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                 {initial.book.volume_id.slice(0, 12)} ·{" "}
                 {form.language || "Unknown language"}
               </p>
             </div>
             <div className="flex items-center gap-3 ml-4">
               <button
-                className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                className="rounded-lg p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-700 hover:text-gray-900 dark:hover:text-white transition-colors"
                 onClick={onClose}
                 aria-label="Close"
               >
@@ -143,11 +140,9 @@ export function DetailsDialog({
             </div>
           </div>
 
-          {/* Content */}
           <div className="grid grid-cols-[180px,1fr] gap-8 p-6">
-            {/* Left rail */}
-            <div className="flex flex-row gap-4 ">
-              <div className="w-[180px] aspect-2/3 overflow-hidden rounded-xl bg-linear-to-br from-gray-100 to-gray-200 ring-1 ring-gray-300/50 shadow-sm">
+            <div className="flex flex-row gap-4">
+              <div className="w-[180px] aspect-2/3 overflow-hidden rounded-xl bg-linear-to-br from-gray-100 dark:from-zinc-700 to-gray-200 dark:to-zinc-800 ring-1 ring-gray-300/50 dark:ring-white/10 shadow-sm">
                 {initial.thumbnail_path ? (
                   <img
                     src={initial.thumbnail_path}
@@ -155,29 +150,28 @@ export function DetailsDialog({
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-sm font-medium text-gray-400">
+                  <div className="flex h-full items-center justify-center text-sm font-medium text-gray-400 dark:text-gray-500">
                     No cover
                   </div>
                 )}
               </div>
-              <div className="flex-1 rounded-xl bg-linear-to-br from-blue-50 to-indigo-50 p-4 text-sm ring-1 ring-blue-100 shadow-sm">
+              <div className="flex-1 rounded-xl bg-linear-to-br from-blue-50 dark:from-blue-900/20 to-indigo-50 dark:to-indigo-900/20 p-4 text-sm ring-1 ring-blue-100 dark:ring-blue-500/20 shadow-sm">
                 <div className="space-y-2.5">
                   <InfoRow label="Pages" value={initial.book.page_count} />
-                  <div className="h-px bg-blue-100/50" />
+                  <div className="h-px bg-blue-100/50 dark:bg-blue-500/20" />
                   <InfoRow label="Publisher" value={initial.book.publisher} />
-                  <div className="h-px bg-blue-100/50" />
+                  <div className="h-px bg-blue-100/50 dark:bg-blue-500/20" />
                   <InfoRow label="Year" value={initial.book.published_date} />
-                  <div className="h-px bg-blue-100/50" />
+                  <div className="h-px bg-blue-100/50 dark:bg-blue-500/20" />
                   <InfoRow label="Print Type" value={initial.book.print_type} />
-                  <div className="h-px bg-blue-100/50" />
+                  <div className="h-px bg-blue-100/50 dark:bg-blue-500/20" />
                   <InfoRow label="Language" value={initial.book.language} />
                 </div>
               </div>
             </div>
 
-            {/* Right side */}
             {editMode ? (
-              <div className="space-y-5 max-h-[600px] overflow-y-auto">
+              <div className="space-y-5 max-h-[600px] overflow-y-scroll">
                 <Field
                   label="Title"
                   value={form.title}
@@ -428,28 +422,25 @@ export function DetailsDialog({
             )}
           </div>
 
-          {/* Footer */}
-          <div className="flex items-center justify-end gap-3 px-6 py-4">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-zinc-700 bg-gray-50/50 dark:bg-zinc-800/50">
+            <button
+              className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+              onClick={onClose}
+            >
+              Close
+            </button>
+            {editMode && (
               <button
-                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
-                onClick={onClose}
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 dark:bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 dark:hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600"
+                onClick={onSave}
+                disabled={
+                  !editMode || saving || !dirty || form.title.trim() === ""
+                }
               >
-                Close
+                <Save size={16} />
+                {saving ? "Saving…" : "Save"}
               </button>
-              {editMode && (
-                <button
-                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600"
-                  onClick={onSave}
-                  disabled={
-                    !editMode || saving || !dirty || form.title.trim() === ""
-                  }
-                >
-                  <Save size={16} />
-                  {saving ? "Saving…" : "Save"}
-                </button>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -472,11 +463,11 @@ function Field({
 }) {
   return (
     <label className="block group">
-      <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+      <span className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-300">
         {label}
       </span>
       <input
-        className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm outline-none transition-all placeholder:text-gray-400 disabled:bg-gray-50 disabled:text-gray-500 disabled:border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+        className="w-full rounded-lg border border-gray-300 dark:border-zinc-600 px-3.5 py-2.5 text-sm outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white dark:bg-zinc-700 text-gray-900 dark:text-white disabled:bg-gray-50 dark:disabled:bg-zinc-800 disabled:text-gray-500 dark:disabled:text-gray-400 disabled:border-gray-200 dark:disabled:border-zinc-600 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
@@ -499,11 +490,11 @@ function TextArea({
 }) {
   return (
     <label className="block group">
-      <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+      <span className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-300">
         {label}
       </span>
       <textarea
-        className="min-h-32 w-full resize-y rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm outline-none transition-all placeholder:text-gray-400 disabled:bg-gray-50 disabled:text-gray-500 disabled:border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+        className="min-h-32 w-full resize-y rounded-lg border border-gray-300 dark:border-zinc-600 px-3.5 py-2.5 text-sm outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white dark:bg-zinc-700 text-gray-900 dark:text-white disabled:bg-gray-50 dark:disabled:bg-zinc-800 disabled:text-gray-500 dark:disabled:text-gray-400 disabled:border-gray-200 dark:disabled:border-zinc-600 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
@@ -511,11 +502,14 @@ function TextArea({
     </label>
   );
 }
+
 function InfoRow({ label, value }: { label: string; value: any }) {
   return (
     <div className="flex justify-between items-center">
-      <span className="text-gray-600 font-medium">{label}</span>
-      <span className="text-gray-900 font-semibold truncate">
+      <span className="text-gray-600 dark:text-gray-400 font-medium">
+        {label}
+      </span>
+      <span className="text-gray-900 dark:text-gray-100 font-semibold truncate">
         {value || "—"}
       </span>
     </div>
@@ -535,16 +529,20 @@ function ViewField({
 }) {
   return (
     <div>
-      <h3 className="text-sm font-semibold text-gray-700 mb-1">{label}</h3>
+      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+        {label}
+      </h3>
       <p
-        className={`text-gray-900 text-sm ${multiline ? "whitespace-pre-wrap" : ""}`}
+        className={`text-gray-900 dark:text-gray-100 text-sm ${
+          multiline ? "whitespace-pre-wrap" : ""
+        }`}
       >
         {isLink && value ? (
           <a
             href={value}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-600 hover:underline break-all"
+            className="text-blue-600 dark:text-blue-400 hover:underline break-all"
           >
             {value}
           </a>
