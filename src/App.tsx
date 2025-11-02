@@ -58,11 +58,13 @@ function App() {
 
   const handleClipboardSuccess = (message: string) => {
     console.log("Success:", message);
+    new Audio("/success.mp3").play();
     toast.success(`Added ${message}`);
   };
 
   const handleClipboardError = (isbn: string, error: string) => {
     console.error("Error:", error);
+    new Audio("/error.flac").play();
     toast.error(error, {
       action: {
         label: "Add",
