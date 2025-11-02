@@ -1,6 +1,15 @@
-export function isPossibleIdentifier(text: string): boolean {
-  const p = text.slice(0, 3);
-  return p === "978" || p === "979" || p === "977";
+export function isISBN(identifier: string): boolean {
+  const digits = identifier.replace(/\D/g, "");
+  return digits.length === 10 || digits.length === 13;
+}
+
+export function isISSN(identifier: string): boolean {
+  const digits = identifier.replace(/\D/g, "");
+  return digits.length === 8 || digits.length > 8;
+}
+
+export function isOnlyDigits(str: string): boolean {
+  return /^\d+$/.test(str);
 }
 
 export function cn(...classes: Array<string | false | null | undefined>) {

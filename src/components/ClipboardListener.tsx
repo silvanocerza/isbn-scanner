@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import { readText } from "@tauri-apps/plugin-clipboard-manager";
 import { invoke } from "@tauri-apps/api/core";
-import { isPossibleIdentifier } from "../utils";
+import { isISBN, isISSN, isOnlyDigits } from "../utils";
+import { toast } from "sonner";
 
 interface ClipboardListenerProps {
   onSuccess?: (message: string) => void;
@@ -18,12 +19,19 @@ export function ClipboardListener({
       try {
         const raw = await readText();
         const text = (raw ?? "").trim();
-        if (!isPossibleIdentifier(text)) {
-          return;
-        }
 
         if (text && text !== lastClipboardRef.current) {
           lastClipboardRef.current = text;
+          if (!isISBN(text) && !isISSN(text)) {
+            if (isOnlyDigits(text)) {
+              // Show the message only if we have something that looks like
+              // a bar code to avoid spamming with errors every time we copy
+              // something
+              toast.error("Unknown barcode format");
+            }
+            return;
+          }
+
           try {
             const exists = await invoke<boolean>("isbn_exists", { isbn: text });
             if (exists) {
