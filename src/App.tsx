@@ -3,17 +3,38 @@ import { useState } from "react";
 import { ClipboardListener } from "./components/ClipboardListener";
 import { BookGrid } from "./components/BookGrid";
 import { PillNav } from "./components/PillNav";
-import { Cog, Pencil, Plus, Download } from "lucide-react";
+import { Cog, Pencil, Plus, Download, PencilLine } from "lucide-react";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { Toaster, toast } from "sonner";
 import { AddBookDialog } from "./components/AddBookDialog";
 import { invoke } from "@tauri-apps/api/core";
+import { DetailsDialog } from "./components/DetailsDialog";
+import { cn } from "./utils";
+
+type SelectedBook = {
+  volume_id: string;
+  title: string;
+  publisher?: string | null;
+  published_date?: string | null;
+  description?: string | null;
+  page_count?: number | null;
+  language?: string | null;
+  authors: string[];
+  thumbnail_url?: string;
+};
 
 function App() {
   const [editMode, setEditMode] = useState(false);
+  const [selected, setSelected] = useState<SelectedBook | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [unknownISBN, setUnknownISBN] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const handleSelect = (b: SelectedBook) => {
+    setSelected(b);
+    setDetailsOpen(true);
+  };
 
   const handleClipboardSuccess = (message: string) => {
     console.log("Success:", message);
@@ -98,18 +119,30 @@ function App() {
         onError={handleClipboardError}
       />
 
-      {/* Fixed header that overlays content */}
-      <div className="fixed top-0 left-0 right-0 z-20 bg-transparent pointer-events-none">
+      <div className="fixed top-0 left-0 right-0 z-20 bg-transparent pointer-events-none select-none">
         <div className="w-full flex justify-center">
-          <div className="pointer-events-auto">
-            <PillNav items={items} />
+          <div className="relative">
+            <div className="pointer-events-auto">
+              <PillNav items={items} />
+            </div>
+            <span
+              className={cn(
+                "absolute -right-28 top-1/2 -translate-y-1/2 pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-orange-400/40 px-3 py-1.5 text-xs font-medium text-gray-700 transition-all duration-300",
+                editMode
+                  ? "opacity-100 scale-100"
+                  : "opacity-0 scale-95 pointer-events-none",
+              )}
+            >
+              <PencilLine size={14} />
+              Edit mode
+            </span>
           </div>
         </div>
       </div>
 
       {/* Scrollable content that goes under the header */}
       <div className="flex-1 overflow-y-auto pt-12">
-        <BookGrid />
+        <BookGrid onSelect={handleSelect} />
       </div>
 
       <AddBookDialog
@@ -123,6 +156,14 @@ function App() {
         title="Settings"
         description="Configure your API key."
       />
+      {selected && (
+        <DetailsDialog
+          open={detailsOpen}
+          onClose={() => setDetailsOpen(false)}
+          editMode={editMode}
+          initial={selected}
+        />
+      )}
     </div>
   );
 }

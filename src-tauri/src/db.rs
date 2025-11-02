@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use serde::Serialize;
 use sqlx::FromRow;
 use tauri::Manager;
@@ -42,6 +43,18 @@ pub struct BookWithThumbnail {
     pub book: Book,
     pub authors: Vec<Author>,
     pub thumbnail_path: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateBookPayload {
+    pub volume_id: String,
+    pub title: String,
+    pub publisher: Option<String>,
+    pub published_date: Option<String>,
+    pub description: Option<String>,
+    pub page_count: Option<i64>,
+    pub language: Option<String>,
+    pub authors: Vec<String>, // full replacement order-preserved
 }
 
 pub async fn fetch_all_books(
@@ -231,4 +244,61 @@ pub async fn volume_title_by_isbn(
     .await?;
 
     Ok(row.map(|t| t.0))
+}
+
+pub async fn update_book(
+    pool: &tauri_plugin_sql::DbPool,
+    payload: UpdateBookPayload,
+) -> anyhow::Result<()> {
+    let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
+    let mut tx = sqlite_pool.begin().await?;
+
+    sqlx::query(
+        r#"
+        UPDATE books
+        SET title = ?, publisher = ?, published_date = ?, description = ?,
+            page_count = ?, language = ?
+        WHERE volume_id = ?
+        "#,
+    )
+    .bind(&payload.title)
+    .bind(payload.publisher.as_deref())
+    .bind(payload.published_date.as_deref())
+    .bind(payload.description.as_deref())
+    .bind(payload.page_count)
+    .bind(payload.language.as_deref())
+    .bind(&payload.volume_id)
+    .execute(&mut *tx)
+    .await?;
+
+    // Replace authors list
+    sqlx::query("DELETE FROM book_authors WHERE volume_id = ?")
+        .bind(&payload.volume_id)
+        .execute(&mut *tx)
+        .await?;
+
+    for (pos, name) in payload.authors.iter().enumerate() {
+        sqlx::query(r#"INSERT INTO authors (name) VALUES (?) ON CONFLICT(name) DO NOTHING"#)
+            .bind(name)
+            .execute(&mut *tx)
+            .await?;
+
+        sqlx::query(
+            r#"
+            INSERT INTO book_authors (volume_id, author_id, position)
+            SELECT ?, author_id, ?
+            FROM authors WHERE name = ?
+            ON CONFLICT(volume_id, author_id)
+            DO UPDATE SET position = excluded.position
+            "#,
+        )
+        .bind(&payload.volume_id)
+        .bind(pos as i64)
+        .bind(name)
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    tx.commit().await?;
+    Ok(())
 }

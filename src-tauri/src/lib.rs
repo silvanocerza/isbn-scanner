@@ -112,6 +112,21 @@ async fn add_book(
     Ok(vol_id)
 }
 
+#[tauri::command]
+async fn update_book(
+    payload: crate::db::UpdateBookPayload,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    let instances = app_handle.state::<DbInstances>();
+    let guard = instances.0.read().await;
+    let pool = guard.get("sqlite:books.db").ok_or("Database not found")?;
+    crate::db::update_book(pool, payload)
+        .await
+        .map_err(|e| e.to_string())?;
+    let _ = app_handle.emit("book-updated", &"ok");
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let migrations = vec![crate::migrations::MIGRATION001];
@@ -136,6 +151,7 @@ pub fn run() {
             get_settings,
             set_settings,
             add_book,
+            update_book,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
