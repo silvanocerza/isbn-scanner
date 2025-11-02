@@ -1,0 +1,50 @@
+name: build
+
+on: [push]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - run: pnpm install
+
+      - run: pnpm tauri build
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: windows-build
+          path: src-tauri/target/release/bundle/
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - run: pnpm install
+
+      - run: pnpm tauri build
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: macos-build
+          path: src-tauri/target/release/bundle/
