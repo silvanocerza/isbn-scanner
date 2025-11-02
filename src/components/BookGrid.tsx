@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { BookIcon } from "lucide-react";
 
 interface Book {
   volume_id: string;
@@ -75,12 +76,20 @@ export function BookGrid() {
         {books.map((item) => (
           <div key={item.book.volume_id} className="w-[180px]">
             <div className="group rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-xl transition">
-              <img
-                src={images[item.book.volume_id] || ""}
-                alt={item.book.title}
-                loading="lazy"
-                className="w-full h-full object-cover bg-gray-100"
-              />
+              <div className="relative w-full aspect-2/3 bg-gray-100">
+                {images[item.book.volume_id] ? (
+                  <img
+                    src={images[item.book.volume_id]}
+                    alt={item.book.title}
+                    loading="lazy"
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center bg-blue-300">
+                    <BookIcon size={32} className="text-white/80" />
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="p-3 flex-1 flex flex-col">
