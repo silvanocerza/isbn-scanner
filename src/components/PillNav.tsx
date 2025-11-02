@@ -17,7 +17,6 @@ export function PillNav({ items, className }: PillNavProps) {
     <div
       className={cn(
         "inline-flex items-center gap-3 rounded-full px-3 py-2",
-
         className,
       )}
       role="toolbar"

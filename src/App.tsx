@@ -91,32 +91,39 @@ function App() {
   ];
 
   return (
-    <main className="flex flex-col items-center gap-6 py-2">
+    <div className="h-screen w-screen flex flex-col">
       <Toaster richColors />
       <ClipboardListener
         onSuccess={handleClipboardSuccess}
         onError={handleClipboardError}
       />
 
-      <div className="w-full flex justify-center">
-        <PillNav items={items} />
+      {/* Fixed header that overlays content */}
+      <div className="fixed top-0 left-0 right-0 z-20 bg-transparent pointer-events-none">
+        <div className="w-full flex justify-center">
+          <div className="pointer-events-auto">
+            <PillNav items={items} />
+          </div>
+        </div>
       </div>
 
-      <BookGrid />
+      {/* Scrollable content that goes under the header */}
+      <div className="flex-1 overflow-y-auto pt-12">
+        <BookGrid />
+      </div>
 
       <AddBookDialog
         open={addOpen}
         onClose={() => setAddOpen(false)}
         onSubmit={handleAddBook}
       />
-
       <SettingsDialog
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         title="Settings"
         description="Configure your API key."
       />
-    </main>
+    </div>
   );
 }
 
