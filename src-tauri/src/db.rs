@@ -268,30 +268,6 @@ pub async fn isbn_exists(pool: &tauri_plugin_sql::DbPool, isbn: &str) -> anyhow:
     Ok(row.is_some())
 }
 
-pub async fn volume_title_by_isbn(
-    pool: &tauri_plugin_sql::DbPool,
-    isbn: &str,
-) -> anyhow::Result<Option<String>> {
-    let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
-
-    // Join identifiers to books to get the title for the matching ISBN
-    let row: Option<(String,)> = sqlx::query_as(
-        r#"
-        SELECT b.title
-        FROM book_identifiers bi
-        JOIN books b ON b.volume_id = bi.volume_id
-        WHERE bi.identifier = ?
-          AND bi.type IN ('ISBN_10', 'ISBN_13')
-        LIMIT 1
-        "#,
-    )
-    .bind(isbn)
-    .fetch_optional(sqlite_pool)
-    .await?;
-
-    Ok(row.map(|t| t.0))
-}
-
 pub async fn update_book(
     pool: &tauri_plugin_sql::DbPool,
     payload: UpdateBookPayload,
