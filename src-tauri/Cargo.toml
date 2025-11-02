@@ -31,4 +31,5 @@ tauri-plugin-clipboard = "2.1.11"
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-store = "2"
+uuid = { version = "1.18.1", features = ["v4"] }
 

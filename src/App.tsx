@@ -5,29 +5,58 @@ import { BookGrid } from "./components/BookGrid";
 import { PillNav } from "./components/PillNav";
 import { Cog, Pencil, Plus, Download } from "lucide-react";
 import { SettingsDialog } from "./components/SettingsDialog";
+import { Toaster, toast } from "sonner";
+import { AddBookDialog } from "./components/AddBookDialog";
+import { invoke } from "@tauri-apps/api/core";
 
 function App() {
   const [editMode, setEditMode] = useState(false);
+  const [unknownISBN, setUnknownISBN] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-
-  const openSettingsDialog = async () => {
-    setSettingsOpen(true);
-  };
 
   const handleClipboardSuccess = (message: string) => {
     console.log("Success:", message);
+    toast.success(`Added ${message}`);
   };
 
-  const handleClipboardError = (error: string) => {
+  const handleClipboardError = (isbn: string, error: string) => {
     console.error("Error:", error);
+    toast.error(error, {
+      action: {
+        label: "Add",
+        onClick: () => {
+          setUnknownISBN(isbn);
+          openAddDialog();
+        },
+      },
+      cancel: {
+        label: "Ignore",
+        onClick: () => console.log("Cancel!"),
+      },
+    });
   };
 
   const openAddDialog = () => {
-    console.log("Add clicked");
+    setAddOpen(!addOpen);
+  };
+
+  const handleAddBook = async (payload: {
+    title: string;
+    authors?: string[];
+    publisher?: string;
+    year?: string;
+  }) => {
+    await invoke<string>("add_book", { ...payload, isbn: unknownISBN });
+    setUnknownISBN("");
   };
 
   const toggleEditMode = () => {
     setEditMode((v) => !v);
+  };
+
+  const openSettingsDialog = async () => {
+    setSettingsOpen(true);
   };
 
   const openExportDialog = () => {
@@ -63,6 +92,7 @@ function App() {
 
   return (
     <main className="flex flex-col items-center gap-6 py-2">
+      <Toaster richColors />
       <ClipboardListener
         onSuccess={handleClipboardSuccess}
         onError={handleClipboardError}
@@ -73,6 +103,12 @@ function App() {
       </div>
 
       <BookGrid />
+
+      <AddBookDialog
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onSubmit={handleAddBook}
+      />
 
       <SettingsDialog
         open={settingsOpen}

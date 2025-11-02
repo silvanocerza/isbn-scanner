@@ -1,7 +1,9 @@
 use reqwest::Client;
 use serde::Deserialize;
-use sqlx::{Sqlite, SqlitePool, Transaction};
+use sqlx::{Sqlite, Transaction};
 use tauri::Manager;
+
+use crate::db::{isbn_exists, volume_title_by_isbn};
 
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
@@ -115,11 +117,23 @@ impl GoogleBooksClient {
     // Returns Some(volume_id) if inserted/updated, None if no items for ISBN
     pub async fn fetch_and_store_by_isbn(
         &self,
-        pool: &SqlitePool,
+        pool: &tauri_plugin_sql::DbPool,
         isbn: &str,
         app_handle: &tauri::AppHandle,
         api_key: &str,
     ) -> anyhow::Result<Option<String>> {
+        if isbn_exists(pool, isbn).await? {
+            if let Some(title) = volume_title_by_isbn(pool, isbn).await? {
+                return Ok(Some(title));
+            } else {
+                // Extremely unlikely: exists check passed but lookup failed.
+                // Fall through to fetch or return None; choose one:
+                return Ok(None);
+            }
+        }
+
+        let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
+
         // 1) Fetch using query params
         let resp = self
             .http
@@ -141,7 +155,7 @@ impl GoogleBooksClient {
         let vi = &v.volume_info;
 
         // 2) Begin transaction
-        let mut tx: Transaction<'_, Sqlite> = pool.begin().await?;
+        let mut tx: Transaction<'_, Sqlite> = sqlite_pool.begin().await?;
 
         // Helpers
         let img = vi.image_links.as_ref();
@@ -357,7 +371,7 @@ impl GoogleBooksClient {
             println!("[DEBUG] Failed downloading thumbnail")
         }
 
-        Ok(Some(v.id.clone()))
+        Ok(Some(v.volume_info.title.clone()))
     }
 
     async fn download_thumbnail(

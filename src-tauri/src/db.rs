@@ -1,6 +1,7 @@
 use serde::Serialize;
 use sqlx::FromRow;
 use tauri::Manager;
+use uuid::Uuid;
 
 #[derive(Debug, Serialize, FromRow)]
 pub struct Book {
@@ -91,4 +92,143 @@ pub async fn fetch_all_books(
     }
 
     Ok(result)
+}
+
+pub async fn insert_book(
+    pool: &tauri_plugin_sql::DbPool,
+    title: &str,
+    authors: &[String],
+    publisher: Option<&str>,
+    year: Option<&str>,
+    isbn: Option<&str>,
+) -> anyhow::Result<String> {
+    let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
+    let mut tx = sqlite_pool.begin().await?;
+
+    // Generate a synthetic volume_id
+    let volume_id = Uuid::new_v4().to_string();
+
+    // Insert into books with minimal fields
+    sqlx::query(
+        r#"
+        INSERT INTO books (
+          volume_id, title, publisher, published_date,
+          description, page_count, print_type, maturity_rating,
+          language, preview_link, info_link, canonical_link,
+          small_thumbnail, thumbnail, country, saleability, is_ebook,
+          viewability, embeddable, public_domain, text_to_speech_permission,
+          epub_available, pdf_available, web_reader_link, access_view_status, quote_sharing_allowed
+        ) VALUES (
+          ?, ?, ?, ?,
+          NULL, NULL, NULL, NULL,
+          NULL, NULL, NULL, NULL,
+          NULL, NULL, NULL, NULL, NULL,
+          NULL, NULL, NULL, NULL,
+          NULL, NULL, NULL, NULL, NULL
+        )
+        "#,
+    )
+    .bind(&volume_id)
+    .bind(title)
+    .bind(publisher)
+    .bind(year)
+    .execute(&mut *tx)
+    .await?;
+
+    // Authors (optional)
+    if !authors.is_empty() {
+        sqlx::query("DELETE FROM book_authors WHERE volume_id = ?")
+            .bind(&volume_id)
+            .execute(&mut *tx)
+            .await?;
+
+        for (pos, name) in authors.iter().enumerate() {
+            sqlx::query(r#"INSERT INTO authors (name) VALUES (?) ON CONFLICT(name) DO NOTHING"#)
+                .bind(name)
+                .execute(&mut *tx)
+                .await?;
+
+            sqlx::query(
+                r#"
+                INSERT INTO book_authors (volume_id, author_id, position)
+                SELECT ?, author_id, ?
+                FROM authors WHERE name = ?
+                ON CONFLICT(volume_id, author_id)
+                DO UPDATE SET position = excluded.position
+                "#,
+            )
+            .bind(&volume_id)
+            .bind(pos as i64)
+            .bind(name)
+            .execute(&mut *tx)
+            .await?;
+        }
+    }
+
+    // Save ISBN if present
+    if let Some(isbn_val) = isbn.filter(|s| !s.is_empty()) {
+        // Infer type by length
+        let id_type = match isbn_val.len() {
+            10 => "ISBN_10",
+            13 => "ISBN_13",
+            _ => "UNKNOWN",
+        };
+
+        sqlx::query(
+            r#"
+            INSERT INTO book_identifiers (volume_id, type, identifier)
+            VALUES (?, ?, ?)
+            ON CONFLICT(type, identifier) DO NOTHING
+            "#,
+        )
+        .bind(&volume_id)
+        .bind(id_type)
+        .bind(isbn_val)
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    tx.commit().await?;
+    Ok(volume_id)
+}
+
+pub async fn isbn_exists(pool: &tauri_plugin_sql::DbPool, isbn: &str) -> anyhow::Result<bool> {
+    let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
+    let row = sqlx::query(
+        r#"
+        SELECT 1
+        FROM book_identifiers
+        WHERE identifier = ?
+        LIMIT 1
+        "#,
+    )
+    .bind(isbn)
+    .fetch_optional(sqlite_pool)
+    .await?;
+
+    Ok(row.is_some())
+}
+
+pub async fn volume_title_by_isbn(
+    pool: &tauri_plugin_sql::DbPool,
+    isbn: &str,
+) -> anyhow::Result<Option<String>> {
+    let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
+
+    // Join identifiers to books to get the title for the matching ISBN
+    let row: Option<(String,)> = sqlx::query_as(
+        r#"
+        SELECT b.title
+        FROM book_identifiers bi
+        JOIN books b ON b.volume_id = bi.volume_id
+        WHERE bi.identifier = ?
+          AND bi.type IN ('ISBN_10', 'ISBN_13')
+        LIMIT 1
+        "#,
+    )
+    .bind(isbn)
+    .fetch_optional(sqlite_pool)
+    .await?;
+
+    Ok(row.map(|t| t.0))
 }

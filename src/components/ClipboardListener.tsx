@@ -6,7 +6,7 @@ import { isPossibleIdentifier } from "../utils";
 
 interface ClipboardListenerProps {
   onSuccess?: (message: string) => void;
-  onError?: (message: string) => void;
+  onError?: (isbn: string, message: string) => void;
 }
 
 export function ClipboardListener({
@@ -29,7 +29,7 @@ export function ClipboardListener({
             const result = await invoke("fetch_isbn", { isbn: text });
             onSuccess?.(result as string);
           } catch (error) {
-            onError?.(error as string);
+            onError?.(text, error as string);
           }
         }
       } catch (error) {

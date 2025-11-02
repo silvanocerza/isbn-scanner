@@ -44,7 +44,6 @@ async fn fetch_isbn(
     let instances = app_handle.state::<DbInstances>();
     let guard = instances.0.read().await;
     let pool = guard.get("sqlite:books.db").ok_or("Database not found")?;
-    let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
 
     // Load settings on demand from the store
     let settings = crate::settings::load_settings(&app_handle)?;
@@ -55,7 +54,7 @@ async fn fetch_isbn(
 
     match config
         .client
-        .fetch_and_store_by_isbn(sqlite_pool, &isbn, &app_handle, api_key)
+        .fetch_and_store_by_isbn(pool, &isbn, &app_handle, api_key)
         .await
     {
         Ok(Some(volume_id)) => {
@@ -81,6 +80,38 @@ async fn get_all_books(
         .map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+async fn add_book(
+    title: String,
+    authors: Option<Vec<String>>,
+    publisher: Option<String>,
+    year: Option<String>,
+    isbn: Option<String>,
+    app_handle: tauri::AppHandle,
+) -> Result<String, String> {
+    let instances = app_handle.state::<DbInstances>();
+    let guard = instances.0.read().await;
+    let pool = guard
+        .get("sqlite:books.db")
+        .ok_or("Database not found")
+        .map_err(|e| e.to_string())?;
+
+    let vol_id = crate::db::insert_book(
+        pool,
+        &title,
+        &authors.unwrap_or_default(),
+        publisher.as_deref(),
+        year.as_deref(),
+        isbn.as_deref(),
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+
+    let _ = app_handle.emit("book-added", &vol_id);
+
+    Ok(vol_id)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let migrations = vec![crate::migrations::MIGRATION001];
@@ -104,6 +135,7 @@ pub fn run() {
             get_all_books,
             get_settings,
             set_settings,
+            add_book,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
