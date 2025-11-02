@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { readText } from "@tauri-apps/plugin-clipboard-manager";
 import { Window } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
-import { isValidISBN } from "../utils";
+import { isPossibleIdentifier } from "../utils";
 
 interface ClipboardListenerProps {
   onSuccess?: (message: string) => void;
@@ -20,7 +20,7 @@ export function ClipboardListener({
     const checkClipboard = async () => {
       try {
         const text = (await readText()).trim();
-        if (!isValidISBN(text)) {
+        if (!isPossibleIdentifier(text)) {
           return;
         }
         if (text !== lastClipboard) {
