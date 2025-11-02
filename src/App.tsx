@@ -19,6 +19,7 @@ import { AddBookDialog } from "./components/AddBookDialog";
 import { invoke } from "@tauri-apps/api/core";
 import { DetailsDialog } from "./components/DetailsDialog";
 import { cn } from "./utils";
+import { loadSettings } from "./lib/store";
 
 type Theme = "light" | "dark" | "system";
 
@@ -56,15 +57,21 @@ function App() {
     setDetailsOpen(true);
   };
 
-  const handleClipboardSuccess = (message: string) => {
+  const handleClipboardSuccess = async (message: string) => {
     console.log("Success:", message);
-    new Audio("/success.mp3").play();
+    const settings = await loadSettings();
+    if (settings.successSound) {
+      new Audio("/success.mp3").play();
+    }
     toast.success(`Added ${message}`);
   };
 
-  const handleClipboardError = (isbn: string, error: string) => {
+  const handleClipboardError = async (isbn: string, error: string) => {
     console.error("Error:", error);
-    new Audio("/error.flac").play();
+    const settings = await loadSettings();
+    if (settings.errorSound) {
+      new Audio("/error.flac").play();
+    }
     toast.error(error, {
       action: {
         label: "Add",

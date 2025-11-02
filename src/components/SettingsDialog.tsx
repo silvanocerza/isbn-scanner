@@ -9,6 +9,18 @@ const settingsSchema = {
     placeholder: "Enter API key",
     helpText: "Stored locally on your device.",
   },
+  successSound: {
+    label: "Enable success sound",
+    type: "checkbox",
+    placeholder: "Success sound",
+    helpText: "Enables the sound played when a book is successfully scanned",
+  },
+  errorSound: {
+    label: "Enable error sound",
+    placeholder: "Error sound",
+    type: "checkbox",
+    helpText: "Enables the sound played when a book is not found",
+  },
 };
 
 interface SettingsDialogProps {

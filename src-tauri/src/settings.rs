@@ -7,6 +7,10 @@ use tauri_plugin_store::StoreExt;
 pub struct AppSettings {
     #[serde(rename = "googleBooksApiKey")]
     pub google_books_api_key: Option<String>,
+    #[serde(rename = "successSoundEnable")]
+    pub success_sound_enable: Option<bool>,
+    #[serde(rename = "errorSoundEnable")]
+    pub error_sound_enable: Option<bool>,
 }
 
 const STORE_PATH: &str = ".settings.json";
