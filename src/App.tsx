@@ -1,6 +1,6 @@
 import "./App.css";
 import { useEffect, useState } from "react";
-import { ClipboardListener } from "./components/ClipboardListener";
+import { KeypressListener } from "./components/KeypressListener";
 import { BookGrid, BookWithThumbnail } from "./components/BookGrid";
 import { PillNav } from "./components/PillNav";
 import {
@@ -177,7 +177,7 @@ function App() {
   return (
     <div className="h-screen w-screen flex flex-col">
       <Toaster richColors />
-      <ClipboardListener
+      <KeypressListener
         onSuccess={handleClipboardSuccess}
         onError={handleClipboardError}
       />
