@@ -20,7 +20,10 @@ impl AppConfig {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let migrations = vec![crate::migrations::MIGRATION001];
+    let migrations = vec![
+        crate::migrations::MIGRATION001,
+        crate::migrations::MIGRATION002,
+    ];
 
     let config =
         tauri::async_runtime::block_on(AppConfig::from_env()).expect("Failed to load config");

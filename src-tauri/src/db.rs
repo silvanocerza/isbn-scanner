@@ -8,6 +8,7 @@ use uuid::Uuid;
 pub struct Book {
     pub volume_id: String,
     pub title: String,
+    pub number: Option<i64>,
     pub publisher: Option<String>,
     pub published_date: Option<String>,
     pub description: Option<String>,
@@ -51,6 +52,7 @@ pub struct BookWithThumbnail {
 pub struct UpdateBookPayload {
     pub volume_id: String,
     pub title: String,
+    pub number: Option<i64>,
     pub publisher: Option<String>,
     pub published_date: Option<String>,
     pub description: Option<String>,
@@ -98,7 +100,7 @@ pub async fn fetch_all_books(
     let books = sqlx::query_as::<_, Book>(
         r#"
         SELECT
-            volume_id, title, publisher, published_date, description,
+            volume_id, title, number, publisher, published_date, description,
             page_count, print_type, maturity_rating, language,
             preview_link, info_link, canonical_link, small_thumbnail,
             thumbnail, country, saleability, is_ebook, viewability,
@@ -156,6 +158,7 @@ pub async fn fetch_all_books(
 pub async fn insert_book(
     pool: &tauri_plugin_sql::DbPool,
     title: &str,
+    number: Option<i64>,
     authors: &[String],
     publisher: Option<&str>,
     year: Option<&str>,
@@ -171,14 +174,14 @@ pub async fn insert_book(
     sqlx::query(
         r#"
         INSERT INTO books (
-          volume_id, title, publisher, published_date,
+          volume_id, title, number, publisher, published_date,
           description, page_count, print_type, maturity_rating,
           language, preview_link, info_link, canonical_link,
           small_thumbnail, thumbnail, country, saleability, is_ebook,
           viewability, embeddable, public_domain, text_to_speech_permission,
           epub_available, pdf_available, web_reader_link, access_view_status, quote_sharing_allowed
         ) VALUES (
-          ?, ?, ?, ?,
+          ?, ?, ?, ?, ?,
           NULL, NULL, NULL, NULL,
           NULL, NULL, NULL, NULL,
           NULL, NULL, NULL, NULL, NULL,
@@ -189,6 +192,7 @@ pub async fn insert_book(
     )
     .bind(&volume_id)
     .bind(title)
+    .bind(number)
     .bind(publisher)
     .bind(year)
     .execute(&mut *tx)
@@ -278,12 +282,13 @@ pub async fn update_book(
     sqlx::query(
         r#"
         UPDATE books
-        SET title = ?, publisher = ?, published_date = ?, description = ?,
+        SET title = ?, number = ?, publisher = ?, published_date = ?, description = ?,
             page_count = ?, language = ?
         WHERE volume_id = ?
         "#,
     )
     .bind(&payload.title)
+    .bind(payload.number)
     .bind(payload.publisher.as_deref())
     .bind(payload.published_date.as_deref())
     .bind(payload.description.as_deref())

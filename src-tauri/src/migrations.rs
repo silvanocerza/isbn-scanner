@@ -77,3 +77,10 @@ pub const MIGRATION001: Migration = Migration {
     ",
     kind: MigrationKind::Up,
 };
+
+pub const MIGRATION002: Migration = Migration {
+    version: 2,
+    description: "add_comic_number",
+    sql: "ALTER TABLE books ADD COLUMN number INTEGER;",
+    kind: MigrationKind::Up,
+};
