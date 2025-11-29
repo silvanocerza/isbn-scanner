@@ -55,6 +55,13 @@ export function KeypressListener({
             }
 
             const result = await invoke<string>("fetch_isbn", { isbn: text });
+            // TODO: There are some comic books that have ISBNs too, so Google
+            // Books returns some data for them, though it doesn't return the
+            // number of the book.
+            //
+            // We should change fetch_isbn logic to check if the fetched book
+            // title already exists in the DB, if it does we must show the user
+            // the dialog to set the number of the comic book.
             onSuccess?.(result);
           } catch (error) {
             // We check if it's an ISSN here, cause if Google Books
@@ -70,7 +77,8 @@ export function KeypressListener({
               //
               // If first part doesn't exist
               // Parse second part to guess number
-              // Open dialog to add book prepopulated with number only            } else {
+              // Open dialog to add book prepopulated with number only
+            } else {
               onError?.(text, String(error));
             }
           }
