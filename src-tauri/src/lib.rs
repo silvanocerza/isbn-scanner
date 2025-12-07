@@ -3,6 +3,7 @@ mod db;
 mod google_books;
 mod migrations;
 mod settings;
+mod utils;
 
 use crate::google_books::client::GoogleBooksClient;
 
@@ -23,6 +24,7 @@ pub fn run() {
     let migrations = vec![
         crate::migrations::MIGRATION001,
         crate::migrations::MIGRATION002,
+        crate::migrations::MIGRATION003,
     ];
 
     let config =
@@ -50,6 +52,8 @@ pub fn run() {
             crate::commands::update_book,
             crate::commands::set_book_number,
             crate::commands::export_books_csv,
+            crate::commands::find_comic_by_ean,
+            crate::commands::clone_book,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

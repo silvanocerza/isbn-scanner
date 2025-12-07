@@ -4,9 +4,9 @@ use tauri::State;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_sql::DbInstances;
 
-use crate::db;
 use crate::db::find_books_containing_title;
 use crate::db::get_book;
+use crate::db::Book;
 use crate::AppConfig;
 
 #[tauri::command]
@@ -95,7 +95,7 @@ pub async fn add_book(
     authors: Option<Vec<String>>,
     publisher: Option<String>,
     year: Option<String>,
-    isbn: Option<String>,
+    identifier: Option<String>,
     app_handle: tauri::AppHandle,
 ) -> Result<String, String> {
     let instances = app_handle.state::<DbInstances>();
@@ -112,7 +112,7 @@ pub async fn add_book(
         &authors.unwrap_or_default(),
         publisher.as_deref(),
         year.as_deref(),
-        isbn.as_deref(),
+        identifier.as_deref(),
     )
     .await
     .map_err(|e| e.to_string())?;
@@ -194,4 +194,29 @@ pub async fn export_books_csv(app_handle: tauri::AppHandle) -> Result<String, St
         .map_err(|e| e.to_string())?;
 
     Ok(format!("Books exported to {}", path_buf.display()))
+}
+
+#[tauri::command]
+pub async fn find_comic_by_ean(
+    ean: String,
+    app_handle: tauri::AppHandle,
+) -> Result<Option<Book>, String> {
+    let instances = app_handle.state::<DbInstances>();
+    let guard = instances.0.read().await;
+    let pool = guard.get("sqlite:books.db").ok_or("Database not found")?;
+    let book = crate::db::find_comic_by_ean(pool, &ean)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(book)
+}
+
+#[tauri::command]
+pub async fn clone_book(volume_id: String, app_handle: tauri::AppHandle) -> Result<String, String> {
+    let instances = app_handle.state::<DbInstances>();
+    let guard = instances.0.read().await;
+    let pool = guard.get("sqlite:books.db").ok_or("Database not found")?;
+    let new_volume_id = crate::db::clone_book(pool, &volume_id)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(new_volume_id)
 }

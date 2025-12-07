@@ -8,6 +8,8 @@ export interface Book {
   title: string;
   number?: number;
   publisher?: string;
+  authors?: string[];
+  year?: string;
   published_date?: string | null;
   description?: string | null;
   page_count?: number | null;

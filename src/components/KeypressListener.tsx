@@ -1,15 +1,20 @@
 import { useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { isISBN, isISSN, isOnlyDigits } from "../utils";
+import { isEAN13, isISBN, isOnlyDigits } from "../utils";
 import { toast } from "sonner";
+import { Book } from "./BookGrid";
 
 interface KeypressListenerProps {
-  onSuccess?: (message: string) => void;
-  onError?: (isbn: string, message: string) => void;
+  onBookSaved?: (message: string) => void;
+  onNewEAN?: (ean: string) => void;
+  onExistingEAN?: (book: Book) => void;
+  onError?: (identifier: string, message: string) => void;
 }
 
 export function KeypressListener({
-  onSuccess,
+  onBookSaved,
+  onNewEAN,
+  onExistingEAN,
   onError,
 }: KeypressListenerProps) {
   // Buffer for the current scan
@@ -41,39 +46,32 @@ export function KeypressListener({
         }
 
         try {
-          if (!isISBN(text) && !isISSN(text)) {
+          if (!isISBN(text) && !isEAN13(text)) {
             if (isOnlyDigits(text)) {
               toast.error("Unknown barcode format");
+            }
+            return;
+          }
+          if (isEAN13(text)) {
+            const book = await invoke<Book | null>("find_comic_by_ean", {
+              ean: text,
+            });
+            if (book) {
+              onExistingEAN?.(book);
+            } else {
+              onNewEAN?.(text);
             }
             return;
           }
 
           try {
             const exists = await invoke<boolean>("isbn_exists", { isbn: text });
-            if (exists) {
-              return;
-            }
+            if (exists) return;
 
             const result = await invoke<string>("fetch_isbn", { isbn: text });
-            onSuccess?.(result);
+            onBookSaved?.(result);
           } catch (error) {
-            // We check if it's an ISSN here, cause if Google Books
-            // managed to recognize it we're good, if it doesn't we
-            // fallback to a workaround
-            if (isISSN(text)) {
-              // Split ISSN
-              // Check if first part is in DB
-              //
-              // If first part exists get comic data
-              // Parse second part to guess number
-              // Open dialog to add book prepopulated with data
-              //
-              // If first part doesn't exist
-              // Parse second part to guess number
-              // Open dialog to add book prepopulated with number only
-            } else {
-              onError?.(text, String(error));
-            }
+            onError?.(text, String(error));
           }
         } catch (err) {
           console.error("Scan handling error:", err);
@@ -108,7 +106,7 @@ export function KeypressListener({
     window.addEventListener("keydown", handleKeydown, { capture: true });
     return () =>
       window.removeEventListener("keydown", handleKeydown, { capture: true });
-  }, [onSuccess, onError]);
+  }, [onBookSaved, onError]);
 
   return null;
 }

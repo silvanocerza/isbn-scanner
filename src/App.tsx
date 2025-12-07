@@ -34,7 +34,7 @@ function App() {
     undefined,
   );
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [unknownISBN, setUnknownISBN] = useState("");
+  const [unknownIdentifier, setUnknownIdentifier] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>(() => {
@@ -73,7 +73,7 @@ function App() {
     setDetailsOpen(true);
   };
 
-  const handleClipboardSuccess = async (message: string) => {
+  const handleBookSaved = async (message: string) => {
     console.log("Success:", message);
     const settings = await loadSettings();
     if (settings.successSound) {
@@ -82,7 +82,25 @@ function App() {
     toast.success(`Added ${message}`);
   };
 
-  const handleClipboardError = async (isbn: string, error: string) => {
+  const handleNewEAN = async (ean: string) => {
+    setUnknownIdentifier(ean);
+    openAddDialog();
+  };
+
+  const handleExistingEAN = async (book: Book) => {
+    // Clone the comic first
+    const newVolumeId = await invoke<string>("clone_book", {
+      volumeId: book.volume_id,
+    });
+    // Override the volume id with the new one since it's used in the
+    // set number dialog
+    book.volume_id = newVolumeId;
+    // We also unset the number just to make sure it's not reused or something
+    book.number = undefined;
+    setBookWithoutNumber(book);
+  };
+
+  const handleClipboardError = async (identifier: string, error: string) => {
     console.error("Error:", error);
     const settings = await loadSettings();
     if (settings.errorSound) {
@@ -92,7 +110,7 @@ function App() {
       action: {
         label: "Add",
         onClick: () => {
-          setUnknownISBN(isbn);
+          setUnknownIdentifier(identifier);
           openAddDialog();
         },
       },
@@ -113,8 +131,11 @@ function App() {
     publisher?: string;
     year?: string;
   }) => {
-    await invoke<string>("add_book", { ...payload, isbn: unknownISBN });
-    setUnknownISBN("");
+    await invoke<string>("add_book", {
+      ...payload,
+      identifier: unknownIdentifier,
+    });
+    setUnknownIdentifier("");
   };
 
   const handleSetBookNumber = async (volumeId: string, bookNumber: number) => {
@@ -202,7 +223,9 @@ function App() {
     <div className="h-screen w-screen flex flex-col">
       <Toaster richColors />
       <KeypressListener
-        onSuccess={handleClipboardSuccess}
+        onBookSaved={handleBookSaved}
+        onNewEAN={handleNewEAN}
+        onExistingEAN={handleExistingEAN}
         onError={handleClipboardError}
       />
 

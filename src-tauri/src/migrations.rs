@@ -84,3 +84,29 @@ pub const MIGRATION002: Migration = Migration {
     sql: "ALTER TABLE books ADD COLUMN number INTEGER;",
     kind: MigrationKind::Up,
 };
+
+pub const MIGRATION003: Migration = Migration {
+    version: 3,
+    description: "allow_multiple_volumes_per_identifier",
+    sql: "
+    CREATE TABLE IF NOT EXISTS book_identifiers_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      volume_id TEXT NOT NULL,
+      type TEXT NOT NULL,
+      identifier TEXT NOT NULL,
+      FOREIGN KEY (volume_id) REFERENCES books(volume_id) ON DELETE CASCADE
+    );
+
+    INSERT INTO book_identifiers_new (id, volume_id, type, identifier)
+    SELECT id, volume_id, type, identifier FROM book_identifiers;
+
+    DROP TABLE book_identifiers;
+
+    ALTER TABLE book_identifiers_new RENAME TO book_identifiers;
+
+    CREATE INDEX IF NOT EXISTS idx_identifiers_identifier ON book_identifiers(identifier);
+    CREATE INDEX IF NOT EXISTS idx_identifiers_type ON book_identifiers(type);
+    CREATE INDEX IF NOT EXISTS idx_identifiers_volume ON book_identifiers(volume_id);
+    ",
+    kind: MigrationKind::Up,
+};

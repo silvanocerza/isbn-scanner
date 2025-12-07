@@ -1,9 +1,10 @@
 use serde::Deserialize;
 use serde::Serialize;
-use sqlx::sqlite;
 use sqlx::FromRow;
 use tauri::Manager;
 use uuid::Uuid;
+
+use crate::utils::get_identifier_type;
 
 #[derive(Debug, Serialize, FromRow)]
 pub struct Book {
@@ -232,7 +233,7 @@ pub async fn insert_book(
     authors: &[String],
     publisher: Option<&str>,
     year: Option<&str>,
-    isbn: Option<&str>,
+    identifier: Option<&str>,
 ) -> anyhow::Result<String> {
     let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
     let mut tx = sqlite_pool.begin().await?;
@@ -298,25 +299,18 @@ pub async fn insert_book(
         }
     }
 
-    // Save ISBN if present
-    if let Some(isbn_val) = isbn.filter(|s| !s.is_empty()) {
-        // Infer type by length
-        let id_type = match isbn_val.len() {
-            10 => "ISBN_10",
-            13 => "ISBN_13",
-            _ => "UNKNOWN",
-        };
-
+    // Save ISBN/EAN-13 if present
+    if let Some(id_value) = identifier.filter(|s| !s.is_empty()) {
+        let id_type = get_identifier_type(id_value)?;
         sqlx::query(
             r#"
             INSERT INTO book_identifiers (volume_id, type, identifier)
             VALUES (?, ?, ?)
-            ON CONFLICT(type, identifier) DO NOTHING
             "#,
         )
         .bind(&volume_id)
         .bind(id_type)
-        .bind(isbn_val)
+        .bind(id_value)
         .execute(&mut *tx)
         .await?;
     }
@@ -466,4 +460,134 @@ pub async fn export_books_to_csv(
 
     wtr.flush()?;
     Ok(())
+}
+
+pub async fn find_comic_by_ean(
+    pool: &tauri_plugin_sql::DbPool,
+    ean: &str,
+) -> anyhow::Result<Option<Book>> {
+    let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
+    let book = sqlx::query_as::<_, Book>(
+        r#"
+        SELECT DISTINCT b.*
+        FROM books b
+        JOIN book_identifiers bi ON b.volume_id = bi.volume_id
+        WHERE bi.type = 'EAN_13' AND bi.identifier = ?
+        "#,
+    )
+    .bind(ean)
+    .fetch_optional(sqlite_pool)
+    .await?;
+
+    Ok(book)
+}
+
+pub async fn clone_book(
+    pool: &tauri_plugin_sql::DbPool,
+    volume_id: &str,
+) -> anyhow::Result<String> {
+    let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
+    let mut tx = sqlite_pool.begin().await?;
+
+    // Get the original book
+    let book = sqlx::query_as::<_, Book>(
+        r#"
+        SELECT
+            volume_id, title, number, publisher, published_date, description,
+            page_count, print_type, maturity_rating, language,
+            preview_link, info_link, canonical_link, small_thumbnail,
+            thumbnail, country, saleability, is_ebook, viewability,
+            embeddable, public_domain, text_to_speech_permission,
+            epub_available, pdf_available, web_reader_link,
+            access_view_status, quote_sharing_allowed
+        FROM books
+        WHERE volume_id = ?
+        "#,
+    )
+    .bind(volume_id)
+    .fetch_one(&mut *tx)
+    .await?;
+
+    let new_volume_id = Uuid::new_v4().to_string();
+
+    // Insert cloned book
+    sqlx::query(
+        r#"
+        INSERT INTO books (
+          volume_id, title, number, publisher, published_date,
+          description, page_count, print_type, maturity_rating,
+          language, preview_link, info_link, canonical_link,
+          small_thumbnail, thumbnail, country, saleability, is_ebook,
+          viewability, embeddable, public_domain, text_to_speech_permission,
+          epub_available, pdf_available, web_reader_link, access_view_status, quote_sharing_allowed
+        ) VALUES (
+          ?, ?, ?, ?, ?,
+          ?, ?, ?, ?,
+          ?, ?, ?, ?,
+          ?, ?, ?, ?, ?,
+          ?, ?, ?, ?,
+          ?, ?, ?, ?, ?
+        )
+        "#,
+    )
+    .bind(&new_volume_id)
+    .bind(&book.title)
+    .bind(book.number)
+    .bind(&book.publisher)
+    .bind(&book.published_date)
+    .bind(&book.description)
+    .bind(book.page_count)
+    .bind(&book.print_type)
+    .bind(&book.maturity_rating)
+    .bind(&book.language)
+    .bind(&book.preview_link)
+    .bind(&book.info_link)
+    .bind(&book.canonical_link)
+    .bind(&book.small_thumbnail)
+    .bind(&book.thumbnail)
+    .bind(&book.country)
+    .bind(&book.saleability)
+    .bind(book.is_ebook)
+    .bind(&book.viewability)
+    .bind(book.embeddable)
+    .bind(book.public_domain)
+    .bind(&book.text_to_speech_permission)
+    .bind(book.epub_available)
+    .bind(book.pdf_available)
+    .bind(&book.web_reader_link)
+    .bind(&book.access_view_status)
+    .bind(book.quote_sharing_allowed)
+    .execute(&mut *tx)
+    .await?;
+
+    // Clone authors
+    sqlx::query(
+        r#"
+        INSERT INTO book_authors (volume_id, author_id, position)
+        SELECT ?, author_id, position
+        FROM book_authors
+        WHERE volume_id = ?
+        "#,
+    )
+    .bind(&new_volume_id)
+    .bind(volume_id)
+    .execute(&mut *tx)
+    .await?;
+
+    // Clone identifiers
+    sqlx::query(
+        r#"
+        INSERT INTO book_identifiers (volume_id, type, identifier)
+        SELECT ?, type, identifier
+        FROM book_identifiers
+        WHERE volume_id = ?
+        "#,
+    )
+    .bind(&new_volume_id)
+    .bind(volume_id)
+    .execute(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+    Ok(new_volume_id)
 }

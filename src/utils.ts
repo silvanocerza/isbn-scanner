@@ -1,11 +1,42 @@
 export function isISBN(identifier: string): boolean {
   const digits = identifier.replace(/\D/g, "");
-  return digits.length === 10 || digits.length === 13;
+
+  if (digits.length === 10) {
+    return validateISBN10(digits);
+  } else if (digits.length === 13) {
+    return validateISBN13(digits);
+  }
+
+  return false;
 }
 
-export function isISSN(identifier: string): boolean {
+function validateISBN10(digits: string): boolean {
+  let sum = 0;
+  for (let i = 0; i < 10; i++) {
+    sum += parseInt(digits[i]) * (10 - i);
+  }
+  return sum % 11 === 0;
+}
+
+function validateISBN13(digits: string): boolean {
+  let sum = 0;
+  for (let i = 0; i < 12; i++) {
+    sum += parseInt(digits[i]) * (i % 2 === 0 ? 1 : 3);
+  }
+  const checkDigit = (10 - (sum % 10)) % 10;
+  return parseInt(digits[12]) === checkDigit;
+}
+
+export function isEAN13(identifier: string): boolean {
   const digits = identifier.replace(/\D/g, "");
-  return digits.length === 8 || digits.length > 8;
+  if (digits.length !== 13) return false;
+
+  let sum = 0;
+  for (let i = 0; i < 12; i++) {
+    sum += parseInt(digits[i]) * (i % 2 === 0 ? 1 : 3);
+  }
+  const checkDigit = (10 - (sum % 10)) % 10;
+  return parseInt(digits[12]) === checkDigit;
 }
 
 export function isOnlyDigits(str: string): boolean {
