@@ -230,27 +230,29 @@ function App() {
       />
 
       <div className="fixed top-0 left-0 right-0 z-20 bg-transparent pointer-events-none select-none">
-        <div className="w-full flex justify-center">
-          <div className="relative">
+        <div className="flex justify-center">
+          <div className="flex flex-col justify-center">
             <div className="pointer-events-auto">
               <PillNav items={items} />
             </div>
-            <span
-              className={cn(
-                "absolute -right-28 top-1/2 -translate-y-1/2 pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-orange-400/40 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 dark:bg-orange-500/30 transition-all duration-300",
-                editMode
-                  ? "opacity-100 scale-100"
-                  : "opacity-0 scale-95 pointer-events-none",
-              )}
-            >
-              <PencilLine size={14} />
-              Edit mode
-            </span>
+            <div className="flex flex-row gap-2">
+              <span
+                className={cn(
+                  "pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-orange-400/40 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 dark:bg-orange-500/30 transition-all duration-300",
+                  editMode
+                    ? "opacity-100 scale-100"
+                    : "opacity-0 scale-95 pointer-events-none",
+                )}
+              >
+                <PencilLine size={14} />
+                Edit mode
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto pt-12 bg-white dark:bg-zinc-900 transition-colors">
+      <div className="flex-1 overflow-y-auto pt-20 bg-white dark:bg-zinc-900 transition-colors">
         <BookGrid onSelect={handleSelect} />
       </div>
 
