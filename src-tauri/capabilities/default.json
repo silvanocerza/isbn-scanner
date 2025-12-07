@@ -2,9 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the main window",
-  "windows": [
-    "main"
-  ],
+  "windows": ["main"],
   "permissions": [
     "core:default",
     "opener:default",
@@ -12,6 +10,14 @@
     "clipboard-manager:allow-read-text",
     {
       "identifier": "fs:allow-read-file",
+      "allow": [
+        {
+          "path": "$APPDATA/books/*"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-exists",
       "allow": [
         {
           "path": "$APPDATA/books/*"

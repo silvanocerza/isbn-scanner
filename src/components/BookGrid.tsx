@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { readFile } from "@tauri-apps/plugin-fs";
+import { readFile, exists } from "@tauri-apps/plugin-fs";
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 
@@ -55,6 +55,10 @@ export function BookGrid({
       setBooks(result);
       const imageMap: Record<string, string> = {};
       for (const item of result) {
+        const imageExists = await exists(item.thumbnail_path);
+        if (!imageExists) {
+          continue;
+        }
         try {
           const data = await readFile(item.thumbnail_path);
           const blob = new Blob([data], { type: "image/jpeg" });
