@@ -96,7 +96,7 @@ export function BookNumberDialog({
               id="bookNumber"
               type="number"
               step="1"
-              value={bookNumber}
+              value={bookNumber ?? ""}
               onChange={(e) =>
                 setBookNumber(parseInt(e.target.value, 10) || undefined)
               }
