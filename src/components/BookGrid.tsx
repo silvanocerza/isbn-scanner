@@ -6,6 +6,7 @@ import { listen } from "@tauri-apps/api/event";
 export interface Book {
   volume_id: string;
   title: string;
+  number?: number;
   publisher?: string;
   published_date?: string | null;
   description?: string | null;
@@ -134,6 +135,7 @@ export function BookGrid({
                 title={item.book.title}
               >
                 {item.book.title}
+                {item.book.number && <> - {item.book.number}</>}
               </h2>
 
               <h4 className="text-sm text-gray-700 dark:text-gray-400">

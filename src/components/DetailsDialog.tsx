@@ -20,6 +20,7 @@ export function DetailsDialog({
 
   const [form, setForm] = useState({
     title: initial.book.title,
+    number: initial.book.number,
     publisher: initial.book.publisher ?? "",
     published_date: initial.book.published_date ?? "",
     description: initial.book.description ?? "",
@@ -31,6 +32,7 @@ export function DetailsDialog({
   useEffect(() => {
     setForm({
       title: initial.book.title,
+      number: initial.book.number,
       publisher: initial.book.publisher ?? "",
       published_date: initial.book.published_date ?? "",
       description: initial.book.description ?? "",
@@ -52,6 +54,7 @@ export function DetailsDialog({
 
     return !(
       form.title === initial.book.title &&
+      form.number === initial.book.number &&
       (form.publisher || "") === (initial.book.publisher || "") &&
       (form.published_date || "") === (initial.book.published_date || "") &&
       (form.description || "") === (initial.book.description || "") &&
@@ -88,6 +91,7 @@ export function DetailsDialog({
         payload: {
           volume_id: initial.book.volume_id,
           title: form.title,
+          number: form.number,
           publisher: form.publisher || null,
           published_date: form.published_date || null,
           description: form.description || null,
@@ -120,6 +124,7 @@ export function DetailsDialog({
             <div className="min-w-0 flex-1">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white truncate">
                 {form.title}
+                {form.number && <> - {form.number}</>}
               </h2>
               <h2 className="text-md font-medium text-gray-900 dark:text-gray-200 truncate">
                 {form.authors}
@@ -173,11 +178,25 @@ export function DetailsDialog({
 
             {editMode ? (
               <div className="space-y-5 max-h-[400px] overflow-y-scroll">
-                <Field
-                  label="Title"
-                  value={form.title}
-                  onChange={(v) => setForm((f) => ({ ...f, title: v }))}
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  <Field
+                    label="Title"
+                    value={form.title}
+                    onChange={(v) => setForm((f) => ({ ...f, title: v }))}
+                  />
+                  <Field
+                    label="Number"
+                    value={form.number}
+                    type="number"
+                    step="1"
+                    onChange={(v) => {
+                      const value = parseInt(v, 10) || undefined;
+                      if (value) {
+                        setForm((f) => ({ ...f, number: value }));
+                      }
+                    }}
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <Field
                     label="Publisher"
@@ -327,7 +346,10 @@ export function DetailsDialog({
               </div>
             ) : (
               <div className="space-y-4 max-h-[400px] overflow-y-auto">
-                <ViewField label="Title" value={form.title} />
+                <div className="grid grid-cols-2 gap-4">
+                  <ViewField label="Title" value={form.title} />
+                  <ViewField label="Number" value={form.number} />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <ViewField label="Publisher" value={form.publisher} />
                   <ViewField label="Year" value={form.published_date} />
@@ -454,13 +476,15 @@ function Field({
   value,
   onChange,
   disabled,
-  inputMode,
+  type,
+  step,
 }: {
   label: string;
-  value: string;
+  value?: string | number;
   onChange: (v: string) => void;
   disabled?: boolean;
-  inputMode?: React.InputHTMLAttributes<HTMLInputElement>["inputMode"];
+  type?: React.InputHTMLAttributes<HTMLInputElement>["type"];
+  step?: React.InputHTMLAttributes<HTMLInputElement>["step"];
 }) {
   return (
     <label className="block group">
@@ -472,7 +496,8 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        inputMode={inputMode}
+        type={type}
+        step={step}
       />
     </label>
   );
