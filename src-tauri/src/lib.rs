@@ -48,6 +48,7 @@ pub fn run() {
             crate::commands::set_settings,
             crate::commands::add_book,
             crate::commands::update_book,
+            crate::commands::set_book_number,
             crate::commands::export_books_csv,
         ])
         .run(tauri::generate_context!())

@@ -359,7 +359,7 @@ impl GoogleBooksClient {
             println!("[DEBUG] Failed downloading thumbnail")
         }
 
-        Ok(Some(v.volume_info.title.clone()))
+        Ok(Some(v.id.clone()))
     }
 
     async fn download_thumbnail(

@@ -1,7 +1,7 @@
 import "./App.css";
 import { useEffect, useState } from "react";
 import { KeypressListener } from "./components/KeypressListener";
-import { BookGrid, BookWithThumbnail } from "./components/BookGrid";
+import { Book, BookGrid, BookWithThumbnail } from "./components/BookGrid";
 import { PillNav } from "./components/PillNav";
 import {
   Cog,
@@ -20,12 +20,19 @@ import { invoke } from "@tauri-apps/api/core";
 import { DetailsDialog } from "./components/DetailsDialog";
 import { cn } from "./utils";
 import { loadSettings } from "./lib/store";
+import { BookNumberDialog } from "./components/BookNumberDialog";
+import { emit, listen } from "@tauri-apps/api/event";
 
 type Theme = "light" | "dark" | "system";
 
 function App() {
   const [editMode, setEditMode] = useState(false);
-  const [selected, setSelected] = useState<BookWithThumbnail | null>(null);
+  const [selectedBook, setSelectedBook] = useState<BookWithThumbnail | null>(
+    null,
+  );
+  const [bookWithoutNumber, setBookWithoutNumber] = useState<Book | undefined>(
+    undefined,
+  );
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [unknownISBN, setUnknownISBN] = useState("");
   const [addOpen, setAddOpen] = useState(false);
@@ -40,6 +47,15 @@ function App() {
     applyTheme(theme);
   }, [theme]);
 
+  useEffect(() => {
+    const unlistener = listen<Book>("possible-comic-found", (event) => {
+      setBookWithoutNumber(event.payload);
+    });
+    return () => {
+      unlistener.then((f) => f());
+    };
+  }, []);
+
   const applyTheme = (t: Theme) => {
     const html = document.documentElement;
     if (t === "system") {
@@ -53,7 +69,7 @@ function App() {
   };
 
   const handleSelect = (b: BookWithThumbnail) => {
-    setSelected(b);
+    setSelectedBook(b);
     setDetailsOpen(true);
   };
 
@@ -99,6 +115,14 @@ function App() {
   }) => {
     await invoke<string>("add_book", { ...payload, isbn: unknownISBN });
     setUnknownISBN("");
+  };
+
+  const handleSetBookNumber = async (volumeId: string, bookNumber: number) => {
+    await invoke("set_book_number", {
+      volumeId,
+      number: bookNumber,
+    });
+    setBookWithoutNumber(undefined);
   };
 
   const toggleEditMode = () => {
@@ -218,14 +242,23 @@ function App() {
         title="Settings"
         description="Configure your API key."
       />
-      {selected && (
+      {selectedBook && (
         <DetailsDialog
           open={detailsOpen}
           onClose={() => setDetailsOpen(false)}
           editMode={editMode}
-          initial={selected}
+          initial={selectedBook}
         />
       )}
+      <BookNumberDialog
+        open={bookWithoutNumber !== undefined}
+        book={bookWithoutNumber}
+        onClose={() => {
+          setBookWithoutNumber(undefined);
+          emit("book-updated");
+        }}
+        onSubmit={handleSetBookNumber}
+      />
     </div>
   );
 }

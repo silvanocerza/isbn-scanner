@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use serde::Serialize;
+use sqlx::sqlite;
 use sqlx::FromRow;
 use tauri::Manager;
 use uuid::Uuid;
@@ -153,6 +154,75 @@ pub async fn fetch_all_books(
     }
 
     Ok(result)
+}
+
+pub async fn get_book(pool: &tauri_plugin_sql::DbPool, volume_id: &str) -> anyhow::Result<Book> {
+    let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
+    let book = sqlx::query_as::<_, Book>(
+        r#"
+        SELECT
+            volume_id, title, number, publisher, published_date, description,
+            page_count, print_type, maturity_rating, language,
+            preview_link, info_link, canonical_link, small_thumbnail,
+            thumbnail, country, saleability, is_ebook, viewability,
+            embeddable, public_domain, text_to_speech_permission,
+            epub_available, pdf_available, web_reader_link,
+            access_view_status, quote_sharing_allowed
+        FROM books
+        WHERE volume_id = ?
+        "#,
+    )
+    .bind(volume_id)
+    .fetch_one(sqlite_pool)
+    .await?;
+    Ok(book)
+}
+
+pub async fn find_books_containing_title(
+    pool: &tauri_plugin_sql::DbPool,
+    title: &str,
+) -> anyhow::Result<Vec<Book>> {
+    let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
+    let books = sqlx::query_as::<_, Book>(
+        r#"
+        SELECT
+            volume_id, title, number, publisher, published_date, description,
+            page_count, print_type, maturity_rating, language,
+            preview_link, info_link, canonical_link, small_thumbnail,
+            thumbnail, country, saleability, is_ebook, viewability,
+            embeddable, public_domain, text_to_speech_permission,
+            epub_available, pdf_available, web_reader_link,
+            access_view_status, quote_sharing_allowed
+        FROM books
+        WHERE LOWER(title) LIKE ?
+        "#,
+    )
+    .bind(format!("%{title}%"))
+    .fetch_all(sqlite_pool)
+    .await?;
+
+    Ok(books)
+}
+
+pub async fn set_book_number(
+    pool: &tauri_plugin_sql::DbPool,
+    volume_id: &str,
+    number: i64,
+) -> anyhow::Result<()> {
+    let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
+    sqlx::query(
+        r#"
+        UPDATE books
+        SET number = ?
+        WHERE volume_id = ?
+        "#,
+    )
+    .bind(number)
+    .bind(volume_id)
+    .execute(sqlite_pool)
+    .await?;
+
+    Ok(())
 }
 
 pub async fn insert_book(

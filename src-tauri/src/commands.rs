@@ -4,6 +4,9 @@ use tauri::State;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_sql::DbInstances;
 
+use crate::db;
+use crate::db::find_books_containing_title;
+use crate::db::get_book;
 use crate::AppConfig;
 
 #[tauri::command]
@@ -42,7 +45,28 @@ pub async fn fetch_isbn(
         .await
     {
         Ok(Some(volume_id)) => {
-            let _ = app_handle.emit("book-added", &volume_id);
+            let book = get_book(pool, &volume_id).await.unwrap();
+            let books = find_books_containing_title(pool, book.title.as_str())
+                .await
+                .unwrap();
+
+            // If we find other books with the same or similar title to the one we just
+            // added it's very likely that it's a comic book series that uses ISBNs.
+            //
+            // Google Books recognizes those comics, though they all have the same title
+            // and they don't include the number of the single comic.
+            //
+            // So we must let the user insert it manually. Unlike ISINs we can't try
+            // to infer the number from the last digits of the code, so we can't even
+            // suggest a possible number to the user.
+            //
+            // If there's only a book it's the one that we just added.
+            if books.len() > 1 {
+                let _ = app_handle.emit("possible-comic-found", &book);
+            } else {
+                let _ = app_handle.emit("book-added", &volume_id);
+            }
+
             Ok(volume_id)
         }
         Ok(None) => Err(format!("No results found for ISBN: {isbn}")),
@@ -119,6 +143,22 @@ pub async fn update_book(
     let guard = instances.0.read().await;
     let pool = guard.get("sqlite:books.db").ok_or("Database not found")?;
     crate::db::update_book(pool, payload)
+        .await
+        .map_err(|e| e.to_string())?;
+    let _ = app_handle.emit("book-updated", &"ok");
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn set_book_number(
+    volume_id: &str,
+    number: i64,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    let instances = app_handle.state::<DbInstances>();
+    let guard = instances.0.read().await;
+    let pool = guard.get("sqlite:books.db").ok_or("Database not found")?;
+    crate::db::set_book_number(pool, volume_id, number)
         .await
         .map_err(|e| e.to_string())?;
     let _ = app_handle.emit("book-updated", &"ok");
