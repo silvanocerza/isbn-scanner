@@ -141,7 +141,7 @@ export function DetailsDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-[180px,1fr] gap-8 p-6">
+          <div className="grid grid-cols-[180px,1fr] gap-8 p-6 max-h-[calc(100dvh-16rem)] overflow-y-hidden">
             <div className="flex flex-row gap-4">
               <div className="w-[180px] aspect-2/3 overflow-hidden rounded-xl bg-linear-to-br from-gray-100 dark:from-zinc-700 to-gray-200 dark:to-zinc-800 ring-1 ring-gray-300/50 dark:ring-white/10 shadow-sm">
                 {initial.thumbnail_path ? (
@@ -172,7 +172,7 @@ export function DetailsDialog({
             </div>
 
             {editMode ? (
-              <div className="space-y-5 max-h-[600px] overflow-y-scroll">
+              <div className="space-y-5 max-h-[400px] overflow-y-scroll">
                 <Field
                   label="Title"
                   value={form.title}
@@ -326,7 +326,7 @@ export function DetailsDialog({
                 />
               </div>
             ) : (
-              <div className="space-y-4 max-h-[600px] overflow-y-auto">
+              <div className="space-y-4 max-h-[400px] overflow-y-auto">
                 <ViewField label="Title" value={form.title} />
                 <div className="grid grid-cols-2 gap-4">
                   <ViewField label="Publisher" value={form.publisher} />
