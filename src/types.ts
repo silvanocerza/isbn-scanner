@@ -27,6 +27,7 @@ export interface Book {
   access_view_status?: string | null;
   quote_sharing_allowed?: boolean | null;
   groups: string[];
+  custom_fields: Record<string, string>;
 }
 
 export interface BookWithThumbnail {

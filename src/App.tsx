@@ -48,6 +48,7 @@ function App() {
   const [groupingOpen, setGroupingOpen] = useState(false);
   const [groups, setGroups] = useState<string[]>([]);
   const [knownGroups, setKnownGroups] = useState<string[]>([]);
+  const [knownCustomFields, setKnownCustomFields] = useState<string[]>([]);
   const [unknownIdentifier, setUnknownIdentifier] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -98,6 +99,15 @@ function App() {
     }
   };
 
+  const loadCustomFields = async () => {
+    try {
+      const result = await invoke<string[]>("get_all_custom_fields");
+      setKnownCustomFields(result);
+    } catch (err) {
+      console.error("Failed to load custom fields:", err);
+    }
+  };
+
   useEffect(() => {
     localStorage.setItem("theme", theme);
     applyTheme(theme);
@@ -106,13 +116,16 @@ function App() {
   useEffect(() => {
     loadBooks();
     loadGroups();
+    loadCustomFields();
     const un1 = listen("book-added", () => {
       loadBooks();
       loadGroups();
+      loadCustomFields();
     });
     const un2 = listen("book-updated", () => {
       loadBooks();
       loadGroups();
+      loadCustomFields();
     });
     return () => {
       un1.then((f) => f());
@@ -415,6 +428,7 @@ function App() {
           editMode={editMode}
           initial={selectedBook}
           knownGroups={knownGroups}
+          knownCustomFields={knownCustomFields}
           onNext={() => {
             const currentIndex = filteredBooks.indexOf(selectedBook);
             setSelectedBook(filteredBooks[currentIndex + 1]);

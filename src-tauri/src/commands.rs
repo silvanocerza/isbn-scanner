@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use tauri::Emitter;
 use tauri::Manager;
 use tauri::State;
@@ -97,6 +99,7 @@ pub async fn add_book(
     publisher: Option<String>,
     year: Option<String>,
     identifier: Option<String>,
+    custom_fields: Option<HashMap<String, String>>,
     app_handle: tauri::AppHandle,
 ) -> Result<String, String> {
     let instances = app_handle.state::<DbInstances>();
@@ -115,6 +118,7 @@ pub async fn add_book(
         publisher.as_deref(),
         year.as_deref(),
         identifier.as_deref(),
+        custom_fields.unwrap_or_default(),
     )
     .await
     .map_err(|e| e.to_string())?;
@@ -230,6 +234,17 @@ pub async fn get_all_groups(app_handle: tauri::AppHandle) -> Result<Vec<String>,
     let pool = guard.get("sqlite:books.db").ok_or("Database not found")?;
 
     crate::db::get_all_groups(pool)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_all_custom_fields(app_handle: tauri::AppHandle) -> Result<Vec<String>, String> {
+    let instances = app_handle.state::<DbInstances>();
+    let guard = instances.0.read().await;
+    let pool = guard.get("sqlite:books.db").ok_or("Database not found")?;
+
+    crate::db::get_all_custom_fields(pool)
         .await
         .map_err(|e| e.to_string())
 }

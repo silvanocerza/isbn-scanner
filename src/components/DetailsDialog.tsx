@@ -14,6 +14,7 @@ export interface DetailsDialogProps {
   hasNext?: boolean;
   hasPrev?: boolean;
   knownGroups?: string[];
+  knownCustomFields?: string[];
 }
 
 export function DetailsDialog({
@@ -26,11 +27,16 @@ export function DetailsDialog({
   hasNext = false,
   hasPrev = false,
   knownGroups = [],
+  knownCustomFields = [],
 }: DetailsDialogProps) {
   const [saving, setSaving] = useState(false);
   const [groupInput, setGroupInput] = useState("");
   const [groupSelectedIndex, setGroupSelectedIndex] = useState(-1);
   const groupInputRef = useRef<HTMLInputElement>(null);
+
+  const [customFieldInput, setCustomFieldInput] = useState("");
+  const [customFieldSelectedIndex, setCustomFieldSelectedIndex] = useState(-1);
+  const customFieldInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     title: initial.book.title,
@@ -42,6 +48,7 @@ export function DetailsDialog({
     language: initial.book.language ?? "",
     authors: initial.authors.map((a) => a.name.trim()).join(", "),
     groups: initial.book.groups.join(", "),
+    custom_fields: { ...initial.book.custom_fields },
   });
 
   useEffect(() => {
@@ -55,9 +62,12 @@ export function DetailsDialog({
       language: initial.book.language ?? "",
       authors: initial.authors.map((a) => a.name.trim()).join(", "),
       groups: initial.book.groups.join(", "),
+      custom_fields: { ...initial.book.custom_fields },
     });
     setGroupInput("");
     setGroupSelectedIndex(-1);
+    setCustomFieldInput("");
+    setCustomFieldSelectedIndex(-1);
   }, [initial, editMode]);
 
   const currentGroups = useMemo(
@@ -85,9 +95,40 @@ export function DetailsDialog({
     [allKnownGroups, groupInput, currentGroups],
   );
 
+  const currentCustomFields = useMemo(
+    () => Object.keys(form.custom_fields),
+    [form.custom_fields],
+  );
+
+  const allKnownCustomFields = useMemo(
+    () =>
+      Array.from(
+        new Set([
+          ...knownCustomFields,
+          ...Object.keys(initial.book.custom_fields),
+        ]),
+      ),
+    [knownCustomFields, initial.book.custom_fields],
+  );
+
+  const filteredCustomFieldSuggestions = useMemo(
+    () =>
+      allKnownCustomFields.filter(
+        (field) =>
+          customFieldInput.trim() &&
+          field.toLowerCase().includes(customFieldInput.toLowerCase()) &&
+          !currentCustomFields.includes(field),
+      ),
+    [allKnownCustomFields, customFieldInput, currentCustomFields],
+  );
+
   useEffect(() => {
     setGroupSelectedIndex(-1);
   }, [groupInput]);
+
+  useEffect(() => {
+    setCustomFieldSelectedIndex(-1);
+  }, [customFieldInput]);
 
   const handleGroupAdd = (group: string) => {
     if (!currentGroups.includes(group)) {
@@ -128,6 +169,61 @@ export function DetailsDialog({
     }
   };
 
+  const handleCustomFieldAdd = (fieldName: string) => {
+    if (!currentCustomFields.includes(fieldName)) {
+      setForm((f) => ({
+        ...f,
+        custom_fields: { ...f.custom_fields, [fieldName]: "" },
+      }));
+    }
+    setCustomFieldInput("");
+    setCustomFieldSelectedIndex(-1);
+  };
+
+  const handleCustomFieldRemove = (fieldName: string) => {
+    setForm((f) => {
+      const newFields = { ...f.custom_fields };
+      delete newFields[fieldName];
+      return { ...f, custom_fields: newFields };
+    });
+  };
+
+  const handleCustomFieldValueChange = (fieldName: string, value: string) => {
+    setForm((f) => ({
+      ...f,
+      custom_fields: { ...f.custom_fields, [fieldName]: value },
+    }));
+  };
+
+  const handleCustomFieldKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+  ) => {
+    if (filteredCustomFieldSuggestions.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setCustomFieldSelectedIndex((prev) =>
+          prev < filteredCustomFieldSuggestions.length - 1 ? prev + 1 : prev,
+        );
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setCustomFieldSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (customFieldSelectedIndex >= 0) {
+          handleCustomFieldAdd(
+            filteredCustomFieldSuggestions[customFieldSelectedIndex],
+          );
+        } else if (customFieldInput.trim()) {
+          handleCustomFieldAdd(customFieldInput.trim());
+        }
+        return;
+      }
+    } else if (e.key === "Enter" && customFieldInput.trim()) {
+      e.preventDefault();
+      handleCustomFieldAdd(customFieldInput.trim());
+    }
+  };
+
   const dirty = useMemo(() => {
     const authorsArr = form.authors
       .split(",")
@@ -147,6 +243,14 @@ export function DetailsDialog({
       groupsArr.length === origGroups.length &&
       groupsArr.every((g, i) => g === origGroups[i]);
 
+    const origCustomFields = initial.book.custom_fields;
+    const eqCustomFields =
+      Object.keys(form.custom_fields).length ===
+        Object.keys(origCustomFields).length &&
+      Object.keys(form.custom_fields).every(
+        (key) => form.custom_fields[key] === origCustomFields[key],
+      );
+
     return !(
       form.title === initial.book.title &&
       form.number === initial.book.number &&
@@ -156,7 +260,8 @@ export function DetailsDialog({
       form.page_count === initial.book.page_count &&
       (form.language || "") === (initial.book.language || "") &&
       eqAuthors &&
-      eqGroups
+      eqGroups &&
+      eqCustomFields
     );
   }, [form, initial]);
 
@@ -199,6 +304,7 @@ export function DetailsDialog({
           language: form.language || null,
           authors: authorsArr,
           groups: groupsArr,
+          custom_fields: form.custom_fields,
         },
       });
       onClose();
@@ -416,6 +522,104 @@ export function DetailsDialog({
                   </div>
                 </div>
 
+                <div className="block group">
+                  <span className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Custom Fields
+                  </span>
+                  <div className="relative">
+                    <input
+                      ref={customFieldInputRef}
+                      type="text"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      value={customFieldInput}
+                      onChange={(e) => setCustomFieldInput(e.target.value)}
+                      onKeyDown={handleCustomFieldKeyDown}
+                      placeholder="Add a custom field..."
+                      className={cn(
+                        "w-full rounded-lg border border-gray-300 dark:border-zinc-600 px-3.5 py-2.5 text-sm outline-none transition-all",
+                        "placeholder:text-gray-400 dark:placeholder:text-gray-500",
+                        "bg-white dark:bg-zinc-700 text-gray-900 dark:text-white",
+                        "focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20",
+                      )}
+                    />
+                    {filteredCustomFieldSuggestions.length > 0 && (
+                      <div
+                        className={cn(
+                          "absolute top-full left-0 right-0 mt-2 rounded-lg z-10",
+                          "bg-white dark:bg-zinc-700",
+                          "border border-gray-300 dark:border-zinc-600",
+                          "shadow-lg max-h-48 overflow-y-auto",
+                        )}
+                      >
+                        {filteredCustomFieldSuggestions.map(
+                          (suggestion, index) => (
+                            <button
+                              key={suggestion}
+                              type="button"
+                              onClick={() => handleCustomFieldAdd(suggestion)}
+                              className={cn(
+                                "w-full text-left px-3 py-2",
+                                "text-sm text-gray-900 dark:text-white",
+                                "transition-colors",
+                                "first:rounded-t-lg last:rounded-b-lg",
+                                customFieldSelectedIndex === index
+                                  ? "bg-blue-500 text-white"
+                                  : "hover:bg-gray-100 dark:hover:bg-zinc-600",
+                              )}
+                            >
+                              {suggestion}
+                            </button>
+                          ),
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-2 mt-2">
+                    {currentCustomFields.map((fieldName) => (
+                      <div
+                        key={fieldName}
+                        className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-zinc-700/50"
+                      >
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 min-w-[120px]">
+                          {fieldName}
+                        </span>
+                        <input
+                          type="text"
+                          value={form.custom_fields[fieldName]}
+                          onChange={(e) =>
+                            handleCustomFieldValueChange(
+                              fieldName,
+                              e.target.value,
+                            )
+                          }
+                          className={cn(
+                            "flex-1 rounded-lg border border-gray-300 dark:border-zinc-600 px-3 py-1.5 text-sm outline-none transition-all",
+                            "placeholder:text-gray-400 dark:placeholder:text-gray-500",
+                            "bg-white dark:bg-zinc-700 text-gray-900 dark:text-white",
+                            "focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20",
+                          )}
+                          placeholder="Value..."
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleCustomFieldRemove(fieldName)}
+                          className={cn(
+                            "rounded-full p-1.5",
+                            "text-gray-500 dark:text-gray-400",
+                            "hover:bg-red-100 dark:hover:bg-red-900/30",
+                            "hover:text-red-600 dark:hover:text-red-400",
+                            "transition-colors",
+                          )}
+                          aria-label={`Remove ${fieldName}`}
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <TextArea
                   label="Description"
                   value={form.description}
@@ -586,6 +790,30 @@ export function DetailsDialog({
                     )}
                   </div>
                 </div>
+                {Object.keys(initial.book.custom_fields).length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                      Custom Fields
+                    </h3>
+                    <div className="space-y-2">
+                      {Object.entries(initial.book.custom_fields).map(
+                        ([fieldName, value]) => (
+                          <div
+                            key={fieldName}
+                            className="flex items-start gap-2 p-2 rounded-lg bg-gray-50 dark:bg-zinc-700/50"
+                          >
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 min-w-[120px]">
+                              {fieldName}
+                            </span>
+                            <span className="text-sm text-gray-900 dark:text-gray-100">
+                              {value || "—"}
+                            </span>
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                )}
                 <ViewField
                   label="Description"
                   value={form.description}

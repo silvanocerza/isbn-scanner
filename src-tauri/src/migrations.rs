@@ -134,3 +134,28 @@ pub const MIGRATION004: Migration = Migration {
     ",
     kind: MigrationKind::Up,
 };
+
+pub const MIGRATION005: Migration = Migration {
+    version: 5,
+    description: "add_custom_fields",
+    sql: "
+    CREATE TABLE IF NOT EXISTS custom_fields (
+      field_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE
+    );
+
+    CREATE TABLE IF NOT EXISTS book_custom_fields (
+      volume_id TEXT NOT NULL,
+      field_id INTEGER NOT NULL,
+      value TEXT NOT NULL,
+      PRIMARY KEY (volume_id, field_id),
+      FOREIGN KEY (volume_id) REFERENCES books(volume_id) ON DELETE CASCADE,
+      FOREIGN KEY (field_id) REFERENCES custom_fields(field_id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_custom_fields_name ON custom_fields(name);
+    CREATE INDEX IF NOT EXISTS idx_book_custom_fields_field ON book_custom_fields(field_id);
+    CREATE INDEX IF NOT EXISTS idx_book_custom_fields_volume ON book_custom_fields(volume_id);
+    ",
+    kind: MigrationKind::Up,
+};

@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use serde::Serialize;
 use sqlx::FromRow;
+use std::collections::HashMap;
 use tauri::Manager;
 use uuid::Uuid;
 
@@ -37,6 +38,8 @@ pub struct Book {
     pub quote_sharing_allowed: Option<i64>,
     #[sqlx(skip)]
     pub groups: Vec<String>,
+    #[sqlx(skip)]
+    pub custom_fields: HashMap<String, String>,
 }
 
 #[derive(Debug, Serialize, FromRow)]
@@ -64,6 +67,7 @@ pub struct UpdateBookPayload {
     pub language: Option<String>,
     pub authors: Vec<String>,
     pub groups: Vec<String>,
+    pub custom_fields: HashMap<String, String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -82,6 +86,18 @@ pub struct BookCSVRow {
     pub web_reader_link: Option<String>,
 }
 
+#[derive(Debug, Serialize, FromRow)]
+pub struct CustomField {
+    pub field_id: i64,
+    pub name: String,
+}
+
+#[derive(Debug, Serialize, FromRow)]
+struct CustomFieldValue {
+    pub name: String,
+    pub value: String,
+}
+
 #[derive(sqlx::FromRow)]
 struct BookRow {
     pub volume_id: String,
@@ -95,6 +111,25 @@ struct BookRow {
     pub info_link: Option<String>,
     pub canonical_link: Option<String>,
     pub web_reader_link: Option<String>,
+}
+
+async fn load_custom_fields_for_book(
+    pool: &sqlx::SqlitePool,
+    volume_id: &str,
+) -> anyhow::Result<HashMap<String, String>> {
+    let fields = sqlx::query_as::<_, CustomFieldValue>(
+        r#"
+        SELECT cf.name, bcf.value
+        FROM book_custom_fields bcf
+        JOIN custom_fields cf ON bcf.field_id = cf.field_id
+        WHERE bcf.volume_id = ?
+        "#,
+    )
+    .bind(volume_id)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(fields.into_iter().map(|f| (f.name, f.value)).collect())
 }
 
 pub async fn fetch_all_books(
@@ -149,6 +184,8 @@ pub async fn fetch_all_books(
         .fetch_all(sqlite_pool)
         .await?;
 
+        let custom_fields = load_custom_fields_for_book(sqlite_pool, &book.volume_id).await?;
+
         let isbns = sqlx::query_scalar::<_, String>(
             r#"
             SELECT identifier
@@ -169,6 +206,7 @@ pub async fn fetch_all_books(
         };
 
         book.groups = groups;
+        book.custom_fields = custom_fields;
 
         result.push(BookWithThumbnail {
             book,
@@ -214,7 +252,10 @@ pub async fn get_book(pool: &tauri_plugin_sql::DbPool, volume_id: &str) -> anyho
     .fetch_all(sqlite_pool)
     .await?;
 
+    let custom_fields = load_custom_fields_for_book(sqlite_pool, volume_id).await?;
+
     book.groups = groups;
+    book.custom_fields = custom_fields;
     Ok(book)
 }
 
@@ -255,7 +296,10 @@ pub async fn find_books_containing_title(
         .fetch_all(sqlite_pool)
         .await?;
 
+        let custom_fields = load_custom_fields_for_book(sqlite_pool, &book.volume_id).await?;
+
         book.groups = groups;
+        book.custom_fields = custom_fields;
     }
 
     Ok(books)
@@ -291,6 +335,7 @@ pub async fn insert_book(
     publisher: Option<&str>,
     year: Option<&str>,
     identifier: Option<&str>,
+    custom_fields: HashMap<String, String>,
 ) -> anyhow::Result<String> {
     let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
     let mut tx = sqlite_pool.begin().await?;
@@ -394,6 +439,26 @@ pub async fn insert_book(
         .await?;
     }
 
+    for (field_name, value) in custom_fields {
+        sqlx::query(r#"INSERT INTO custom_fields (name) VALUES (?) ON CONFLICT(name) DO NOTHING"#)
+            .bind(&field_name)
+            .execute(&mut *tx)
+            .await?;
+
+        sqlx::query(
+            r#"
+            INSERT INTO book_custom_fields (volume_id, field_id, value)
+            SELECT ?, field_id, ?
+            FROM custom_fields WHERE name = ?
+            "#,
+        )
+        .bind(&volume_id)
+        .bind(value)
+        .bind(&field_name)
+        .execute(&mut *tx)
+        .await?;
+    }
+
     tx.commit().await?;
     Ok(volume_id)
 }
@@ -490,6 +555,31 @@ pub async fn update_book(
         )
         .bind(&payload.volume_id)
         .bind(group_name)
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    sqlx::query("DELETE FROM book_custom_fields WHERE volume_id = ?")
+        .bind(&payload.volume_id)
+        .execute(&mut *tx)
+        .await?;
+
+    for (field_name, value) in &payload.custom_fields {
+        sqlx::query(r#"INSERT INTO custom_fields (name) VALUES (?) ON CONFLICT(name) DO NOTHING"#)
+            .bind(field_name)
+            .execute(&mut *tx)
+            .await?;
+
+        sqlx::query(
+            r#"
+            INSERT INTO book_custom_fields (volume_id, field_id, value)
+            SELECT ?, field_id, ?
+            FROM custom_fields WHERE name = ?
+            "#,
+        )
+        .bind(&payload.volume_id)
+        .bind(value)
+        .bind(field_name)
         .execute(&mut *tx)
         .await?;
     }
@@ -597,7 +687,10 @@ pub async fn find_comic_by_ean(
         .fetch_all(sqlite_pool)
         .await?;
 
+        let custom_fields = load_custom_fields_for_book(sqlite_pool, &b.volume_id).await?;
+
         b.groups = groups;
+        b.custom_fields = custom_fields;
     }
 
     Ok(book)
@@ -723,6 +816,19 @@ pub async fn clone_book(
     .execute(&mut *tx)
     .await?;
 
+    sqlx::query(
+        r#"
+        INSERT INTO book_custom_fields (volume_id, field_id, value)
+        SELECT ?, field_id, value
+        FROM book_custom_fields
+        WHERE volume_id = ?
+        "#,
+    )
+    .bind(&new_volume_id)
+    .bind(volume_id)
+    .execute(&mut *tx)
+    .await?;
+
     tx.commit().await?;
     Ok(new_volume_id)
 }
@@ -733,4 +839,12 @@ pub async fn get_all_groups(pool: &tauri_plugin_sql::DbPool) -> anyhow::Result<V
         .fetch_all(sqlite_pool)
         .await?;
     Ok(groups)
+}
+
+pub async fn get_all_custom_fields(pool: &tauri_plugin_sql::DbPool) -> anyhow::Result<Vec<String>> {
+    let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
+    let fields = sqlx::query_scalar::<_, String>("SELECT name FROM custom_fields ORDER BY name")
+        .fetch_all(sqlite_pool)
+        .await?;
+    Ok(fields)
 }
