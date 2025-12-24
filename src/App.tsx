@@ -27,10 +27,12 @@ import { emit, listen } from "@tauri-apps/api/event";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { Book, BookWithThumbnail } from "./types";
 import { GroupingDialog } from "./components/GroupingDialog";
+import { SearchBox } from "./components/SearchBox";
 
 type Theme = "light" | "dark" | "system";
 
 function App() {
+  const [searchQuery, setSearchQuery] = useState("");
   const [books, setBooks] = useState<BookWithThumbnail[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -298,12 +300,26 @@ function App() {
     },
   ];
 
-  const filteredBooks =
-    groups.length > 0
-      ? books.filter((bookItem) =>
-          groups.every((group) => bookItem.book.groups.includes(group)),
-        )
-      : books;
+  const filteredBooks = books.filter((book) => {
+    const query = searchQuery.toLowerCase();
+
+    // First filter by search query if present
+    const matchesSearch =
+      !query ||
+      book.book.title.toLowerCase().includes(query) ||
+      book.authors.some((author) =>
+        author.name.toLowerCase().includes(query),
+      ) ||
+      book.book.publisher?.toLowerCase().includes(query) ||
+      book.book.groups.some((group) => group.toLowerCase().includes(query));
+
+    // Then filter by selected groups if any
+    const matchesGroup =
+      groups.length === 0 ||
+      book.book.groups.some((group) => groups.includes(group));
+
+    return matchesSearch && matchesGroup;
+  });
 
   return (
     <div className="h-screen w-screen flex flex-col">
@@ -319,7 +335,15 @@ function App() {
         <div className="flex justify-center">
           <div className="flex flex-col items-center">
             <div className="pointer-events-auto">
-              <PillNav items={items} />
+              <div className="flex flex-row gap-3 items-center">
+                <PillNav items={items} />
+                <SearchBox
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  placeholder="Search"
+                  className="flex-1 max-w-2xl"
+                />
+              </div>
             </div>
             {(editMode || groups.length > 0) && (
               <div className="flex flex-row flex-wrap justify-center max-w-3xl gap-2 pt-4 px-4">
