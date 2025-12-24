@@ -70,20 +70,16 @@ pub struct UpdateBookPayload {
     pub custom_fields: HashMap<String, String>,
 }
 
-#[derive(Debug, Serialize)]
-pub struct BookCSVRow {
-    pub volume_id: String,
-    pub title: String,
-    pub authors: String,
-    pub publisher: Option<String>,
-    pub published_date: Option<String>,
-    pub description: Option<String>,
-    pub page_count: Option<i64>,
-    pub language: Option<String>,
-    pub preview_link: Option<String>,
-    pub info_link: Option<String>,
-    pub canonical_link: Option<String>,
-    pub web_reader_link: Option<String>,
+#[derive(sqlx::FromRow)]
+struct Category {
+    name: String,
+}
+
+#[derive(sqlx::FromRow)]
+struct Identifier {
+    #[sqlx(rename = "type")]
+    type_: String,
+    identifier: String,
 }
 
 #[derive(Debug, Serialize, FromRow)]
@@ -102,15 +98,31 @@ struct CustomFieldValue {
 struct BookRow {
     pub volume_id: String,
     pub title: String,
+    pub number: Option<i64>,
     pub publisher: Option<String>,
     pub published_date: Option<String>,
     pub description: Option<String>,
     pub page_count: Option<i64>,
+    pub print_type: Option<String>,
+    pub maturity_rating: Option<String>,
     pub language: Option<String>,
     pub preview_link: Option<String>,
     pub info_link: Option<String>,
     pub canonical_link: Option<String>,
+    pub small_thumbnail: Option<String>,
+    pub thumbnail: Option<String>,
+    pub country: Option<String>,
+    pub saleability: Option<String>,
+    pub is_ebook: Option<i64>,
+    pub viewability: Option<String>,
+    pub embeddable: Option<i64>,
+    pub public_domain: Option<i64>,
+    pub text_to_speech_permission: Option<String>,
+    pub epub_available: Option<i64>,
+    pub pdf_available: Option<i64>,
     pub web_reader_link: Option<String>,
+    pub access_view_status: Option<String>,
+    pub quote_sharing_allowed: Option<i64>,
 }
 
 async fn load_custom_fields_for_book(
@@ -594,21 +606,74 @@ pub async fn export_books_to_csv(
 ) -> anyhow::Result<()> {
     let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
 
+    // First, collect all unique custom field names
+    let all_custom_field_names =
+        sqlx::query_scalar::<_, String>("SELECT DISTINCT name FROM custom_fields ORDER BY name")
+            .fetch_all(sqlite_pool)
+            .await?;
+
     let books = sqlx::query_as::<_, BookRow>(
         r#"
         SELECT
-            b.volume_id, b.title, b.publisher, b.published_date,
-            b.description, b.page_count, b.language,
-            b.preview_link, b.info_link, b.canonical_link, b.web_reader_link
-        FROM books b
-        ORDER BY b.title
+            volume_id, title, number, publisher, published_date, description,
+            page_count, print_type, maturity_rating, language,
+            preview_link, info_link, canonical_link, small_thumbnail,
+            thumbnail, country, saleability, is_ebook, viewability,
+            embeddable, public_domain, text_to_speech_permission,
+            epub_available, pdf_available, web_reader_link,
+            access_view_status, quote_sharing_allowed
+        FROM books
+        ORDER BY title
         "#,
     )
     .fetch_all(sqlite_pool)
     .await?;
 
-    let mut csv_rows = Vec::new();
+    let file = std::fs::File::create(save_path)?;
+    let mut wtr = csv::Writer::from_writer(file);
 
+    // Write header
+    let mut headers = vec![
+        "volume_id",
+        "title",
+        "number",
+        "authors",
+        "categories",
+        "identifiers",
+        "groups",
+        "publisher",
+        "published_date",
+        "description",
+        "page_count",
+        "print_type",
+        "maturity_rating",
+        "language",
+        "preview_link",
+        "info_link",
+        "canonical_link",
+        "small_thumbnail",
+        "thumbnail",
+        "country",
+        "saleability",
+        "is_ebook",
+        "viewability",
+        "embeddable",
+        "public_domain",
+        "text_to_speech_permission",
+        "epub_available",
+        "pdf_available",
+        "web_reader_link",
+        "access_view_status",
+        "quote_sharing_allowed",
+    ];
+
+    for field_name in &all_custom_field_names {
+        headers.push(field_name);
+    }
+
+    wtr.write_record(&headers)?;
+
+    // Write data rows
     for book in books {
         let authors = sqlx::query_as::<_, Author>(
             r#"
@@ -623,33 +688,103 @@ pub async fn export_books_to_csv(
         .fetch_all(sqlite_pool)
         .await?;
 
-        let authors_str = authors
-            .iter()
-            .map(|a| a.name.clone())
-            .collect::<Vec<_>>()
-            .join("; ");
+        let categories = sqlx::query_as::<_, Category>(
+            r#"
+            SELECT c.name
+            FROM categories c
+            JOIN book_categories bc ON c.category_id = bc.category_id
+            WHERE bc.volume_id = ?
+            "#,
+        )
+        .bind(&book.volume_id)
+        .fetch_all(sqlite_pool)
+        .await?;
 
-        csv_rows.push(BookCSVRow {
-            volume_id: book.volume_id,
-            title: book.title,
-            authors: authors_str,
-            publisher: book.publisher,
-            published_date: book.published_date,
-            description: book.description,
-            page_count: book.page_count,
-            language: book.language,
-            preview_link: book.preview_link,
-            info_link: book.info_link,
-            canonical_link: book.canonical_link,
-            web_reader_link: book.web_reader_link,
-        });
-    }
+        let identifiers = sqlx::query_as::<_, Identifier>(
+            r#"
+            SELECT type, identifier
+            FROM book_identifiers
+            WHERE volume_id = ?
+            "#,
+        )
+        .bind(&book.volume_id)
+        .fetch_all(sqlite_pool)
+        .await?;
 
-    let file = std::fs::File::create(save_path)?;
-    let mut wtr = csv::Writer::from_writer(file);
+        let groups = sqlx::query_scalar::<_, String>(
+            r#"
+            SELECT g.name
+            FROM groups g
+            JOIN book_groups bg ON g.group_id = bg.group_id
+            WHERE bg.volume_id = ?
+            "#,
+        )
+        .bind(&book.volume_id)
+        .fetch_all(sqlite_pool)
+        .await?;
 
-    for row in csv_rows {
-        wtr.serialize(&row)?;
+        let custom_fields = load_custom_fields_for_book(sqlite_pool, &book.volume_id).await?;
+
+        let mut record = vec![
+            book.volume_id.clone(),
+            book.title.clone(),
+            book.number.map(|n| n.to_string()).unwrap_or_default(),
+            authors
+                .iter()
+                .map(|a| a.name.clone())
+                .collect::<Vec<_>>()
+                .join("; "),
+            categories
+                .iter()
+                .map(|c| c.name.clone())
+                .collect::<Vec<_>>()
+                .join("; "),
+            identifiers
+                .iter()
+                .map(|i| format!("{}:{}", i.type_, i.identifier))
+                .collect::<Vec<_>>()
+                .join("; "),
+            groups.join("; "),
+            book.publisher.unwrap_or_default(),
+            book.published_date.unwrap_or_default(),
+            book.description.unwrap_or_default(),
+            book.page_count.map(|n| n.to_string()).unwrap_or_default(),
+            book.print_type.unwrap_or_default(),
+            book.maturity_rating.unwrap_or_default(),
+            book.language.unwrap_or_default(),
+            book.preview_link.unwrap_or_default(),
+            book.info_link.unwrap_or_default(),
+            book.canonical_link.unwrap_or_default(),
+            book.small_thumbnail.unwrap_or_default(),
+            book.thumbnail.unwrap_or_default(),
+            book.country.unwrap_or_default(),
+            book.saleability.unwrap_or_default(),
+            book.is_ebook.map(|n| n.to_string()).unwrap_or_default(),
+            book.viewability.unwrap_or_default(),
+            book.embeddable.map(|n| n.to_string()).unwrap_or_default(),
+            book.public_domain
+                .map(|n| n.to_string())
+                .unwrap_or_default(),
+            book.text_to_speech_permission.unwrap_or_default(),
+            book.epub_available
+                .map(|n| n.to_string())
+                .unwrap_or_default(),
+            book.pdf_available
+                .map(|n| n.to_string())
+                .unwrap_or_default(),
+            book.web_reader_link.unwrap_or_default(),
+            book.access_view_status.unwrap_or_default(),
+            book.quote_sharing_allowed
+                .map(|n| n.to_string())
+                .unwrap_or_default(),
+        ];
+
+        // Add custom field values in the same order as headers
+        for field_name in &all_custom_field_names {
+            record.push(custom_fields.get(field_name).cloned().unwrap_or_default());
+        }
+
+        wtr.write_record(&record)?;
     }
 
     wtr.flush()?;
