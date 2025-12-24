@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { X, Save } from "lucide-react";
-import { BookWithThumbnail } from "./BookGrid";
+import { X, Save, ChevronLeft, ChevronRight } from "lucide-react";
+import { BookWithThumbnail } from "../types";
 
 export interface DetailsDialogProps {
   open: boolean;
   onClose: () => void;
   initial: BookWithThumbnail;
   editMode?: boolean;
+  onNext?: () => void;
+  onPrev?: () => void;
+  hasNext?: boolean;
+  hasPrev?: boolean;
 }
 
 export function DetailsDialog({
@@ -15,6 +19,10 @@ export function DetailsDialog({
   onClose,
   initial,
   editMode = false,
+  onNext,
+  onPrev,
+  hasNext = false,
+  hasPrev = false,
 }: DetailsDialogProps) {
   const [saving, setSaving] = useState(false);
 
@@ -121,7 +129,26 @@ export function DetailsDialog({
       <div className="relative w-full max-w-3xl mx-4 animate-in fade-in slide-in-from-top-4 duration-200">
         <div className="rounded-xl bg-white dark:bg-zinc-800 shadow-2xl ring-1 ring-black/10 dark:ring-white/10 overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-zinc-700">
-            <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <button
+                className="rounded-lg p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-700 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={onPrev}
+                disabled={!hasPrev}
+                aria-label="Previous"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button
+                className="rounded-lg p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-700 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={onNext}
+                disabled={!hasNext}
+                aria-label="Next"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+
+            <div className="min-w-0 flex-1 px-4">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white truncate">
                 {form.title}
                 {form.number && <> - {form.number}</>}
@@ -135,6 +162,7 @@ export function DetailsDialog({
                 {form.language || "Unknown language"}
               </p>
             </div>
+
             <div className="flex items-center gap-3 ml-4">
               <button
                 className="rounded-lg p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-700 hover:text-gray-900 dark:hover:text-white transition-colors"
@@ -145,13 +173,12 @@ export function DetailsDialog({
               </button>
             </div>
           </div>
-
           <div className="grid grid-cols-[180px,1fr] gap-8 p-6 max-h-[calc(100dvh-16rem)] overflow-y-hidden">
             <div className="flex flex-row gap-4">
               <div className="w-[180px] aspect-2/3 overflow-hidden rounded-xl bg-linear-to-br from-gray-100 dark:from-zinc-700 to-gray-200 dark:to-zinc-800 ring-1 ring-gray-300/50 dark:ring-white/10 shadow-sm">
-                {initial.thumbnail_path ? (
+                {initial.thumbnail ? (
                   <img
-                    src={initial.thumbnail_path}
+                    src={initial.thumbnail}
                     alt={initial.book.title}
                     className="h-full w-full object-cover"
                   />
@@ -444,7 +471,6 @@ export function DetailsDialog({
               </div>
             )}
           </div>
-
           <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-zinc-700 bg-gray-50/50 dark:bg-zinc-800/50">
             <button
               className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"

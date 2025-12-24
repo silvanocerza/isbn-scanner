@@ -47,7 +47,7 @@ pub struct BookWithThumbnail {
     pub book: Book,
     pub authors: Vec<Author>,
     pub isbns: Vec<String>,
-    pub thumbnail_path: String,
+    pub thumbnail: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -146,11 +146,17 @@ pub async fn fetch_all_books(
         .await?;
 
         let thumbnail_path = books_dir.join(format!("{}.jpg", book.volume_id));
+        let thumbnail = if thumbnail_path.exists() {
+            Some(thumbnail_path.to_string_lossy().to_string())
+        } else {
+            None
+        };
+
         result.push(BookWithThumbnail {
             book,
             authors,
             isbns,
-            thumbnail_path: thumbnail_path.to_string_lossy().to_string(),
+            thumbnail,
         });
     }
 

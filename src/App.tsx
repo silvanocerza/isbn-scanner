@@ -1,7 +1,7 @@
 import "./App.css";
 import { useEffect, useState } from "react";
 import { KeypressListener } from "./components/KeypressListener";
-import { Book, BookGrid, BookWithThumbnail } from "./components/BookGrid";
+import { BookGrid } from "./components/BookGrid";
 import { PillNav } from "./components/PillNav";
 import {
   Cog,
@@ -22,10 +22,16 @@ import { cn } from "./utils";
 import { loadSettings } from "./lib/store";
 import { BookNumberDialog } from "./components/BookNumberDialog";
 import { emit, listen } from "@tauri-apps/api/event";
+import { exists, readFile } from "@tauri-apps/plugin-fs";
+import { Book, BookWithThumbnail } from "./types";
 
 type Theme = "light" | "dark" | "system";
 
 function App() {
+  const [books, setBooks] = useState<BookWithThumbnail[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const [editMode, setEditMode] = useState(false);
   const [selectedBook, setSelectedBook] = useState<BookWithThumbnail | null>(
     null,
@@ -42,10 +48,53 @@ function App() {
     return (saved as Theme) || "system";
   });
 
+  const loadBooks = async () => {
+    try {
+      setLoading(true);
+      const result = await invoke<BookWithThumbnail[]>("get_all_books");
+      const books = await Promise.all(
+        result.map(async (item) => {
+          if (!item.thumbnail) {
+            return item;
+          }
+
+          try {
+            const data = await readFile(item.thumbnail);
+            const blob = new Blob([data], { type: "image/jpeg" });
+            item.thumbnail = URL.createObjectURL(blob);
+          } catch (err) {
+            item.thumbnail = undefined;
+            console.error(
+              `Failed to load image for ${item.book.volume_id}`,
+              err,
+            );
+          }
+          return item;
+        }),
+      );
+      setBooks(books);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     localStorage.setItem("theme", theme);
     applyTheme(theme);
   }, [theme]);
+
+  useEffect(() => {
+    loadBooks();
+    const un1 = listen("book-added", loadBooks);
+    const un2 = listen("book-updated", loadBooks);
+    return () => {
+      un1.then((f) => f());
+      un2.then((f) => f());
+    };
+  }, []);
 
   useEffect(() => {
     const unlistener = listen<Book>("possible-comic-found", (event) => {
@@ -210,7 +259,6 @@ function App() {
       ariaLabel: "Edit",
       onClick: toggleEditMode,
     },
-
     {
       id: "settings",
       icon: <Cog size={18} />,
@@ -253,7 +301,12 @@ function App() {
       </div>
 
       <div className="flex-1 overflow-y-auto pt-20 bg-white dark:bg-zinc-900 transition-colors">
-        <BookGrid onSelect={handleSelect} />
+        <BookGrid
+          books={books}
+          loading={loading}
+          error={error}
+          onSelect={handleSelect}
+        />
       </div>
 
       <AddBookDialog
@@ -273,6 +326,18 @@ function App() {
           onClose={() => setDetailsOpen(false)}
           editMode={editMode}
           initial={selectedBook}
+          onNext={() => {
+            const currentIndex = books.indexOf(selectedBook);
+            setSelectedBook(books[currentIndex + 1]);
+          }}
+          onPrev={() => {
+            const currentIndex = books.indexOf(selectedBook);
+            setSelectedBook(books[currentIndex - 1]);
+          }}
+          hasNext={
+            selectedBook && books.indexOf(selectedBook) !== books.length - 1
+          }
+          hasPrev={selectedBook && books.indexOf(selectedBook) !== 0}
         />
       )}
       <BookNumberDialog

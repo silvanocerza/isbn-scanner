@@ -1,93 +1,16 @@
-import { invoke } from "@tauri-apps/api/core";
-import { readFile, exists } from "@tauri-apps/plugin-fs";
-import { useEffect, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
-
-export interface Book {
-  volume_id: string;
-  title: string;
-  number?: number;
-  publisher?: string;
-  authors?: string[];
-  year?: string;
-  published_date?: string | null;
-  description?: string | null;
-  page_count?: number | null;
-  language?: string | null;
-  print_type?: string | null;
-  maturity_rating?: string | null;
-  preview_link?: string | null;
-  info_link?: string | null;
-  canonical_link?: string | null;
-  country?: string | null;
-  saleability?: string | null;
-  is_ebook?: boolean | null;
-  viewability?: string | null;
-  embeddable?: boolean | null;
-  public_domain?: boolean | null;
-  text_to_speech_permission?: string | null;
-  epub_available?: boolean | null;
-  pdf_available?: boolean | null;
-  web_reader_link?: string | null;
-  access_view_status?: string | null;
-  quote_sharing_allowed?: boolean | null;
-}
-
-export interface BookWithThumbnail {
-  book: Book;
-  authors: { name: string }[];
-  isbns: string[];
-  thumbnail_path: string;
-}
+import { BookWithThumbnail } from "../types";
 
 export function BookGrid({
+  books,
+  loading,
+  error,
   onSelect,
 }: {
+  books: BookWithThumbnail[];
+  loading: boolean;
+  error: string | null;
   onSelect: (b: BookWithThumbnail) => void;
 }) {
-  const [books, setBooks] = useState<BookWithThumbnail[]>([]);
-  const [images, setImages] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadBooks = async () => {
-    try {
-      setLoading(true);
-      const result = await invoke<BookWithThumbnail[]>("get_all_books");
-      setBooks(result);
-      const imageMap: Record<string, string> = {};
-      for (const item of result) {
-        const imageExists = await exists(item.thumbnail_path);
-        if (!imageExists) {
-          continue;
-        }
-        try {
-          const data = await readFile(item.thumbnail_path);
-          const blob = new Blob([data], { type: "image/jpeg" });
-          imageMap[item.book.volume_id] = URL.createObjectURL(blob);
-        } catch (err) {
-          console.error(`Failed to load image for ${item.book.volume_id}`, err);
-        }
-      }
-      setImages(imageMap);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadBooks();
-    const un1 = listen("book-added", loadBooks);
-    const un2 = listen("book-updated", loadBooks);
-    return () => {
-      un1.then((f) => f());
-      un2.then((f) => f());
-    };
-  }, []);
-
   if (loading) {
     return (
       <div className="p-4 text-gray-700 dark:text-gray-300">
@@ -115,15 +38,15 @@ export function BookGrid({
           <div
             key={item.book.volume_id}
             className="w-[180px]"
-            onClick={() =>
-              onSelect({ ...item, thumbnail_path: images[item.book.volume_id] })
-            }
+            onClick={() => {
+              onSelect(item);
+            }}
           >
             <div className="group rounded-xl overflow-hidden bg-white dark:bg-zinc-800 shadow-sm hover:shadow-xl dark:hover:shadow-xl dark:shadow-black/50 transition">
               <div className="relative w-full aspect-2/3 bg-gray-100 dark:bg-zinc-700">
-                {images[item.book.volume_id] ? (
+                {item.thumbnail ? (
                   <img
-                    src={images[item.book.volume_id]}
+                    src={item.thumbnail}
                     alt={item.book.title}
                     loading="lazy"
                     className="absolute inset-0 h-full w-full object-cover"
