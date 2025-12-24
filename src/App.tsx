@@ -12,18 +12,21 @@ import {
   Sun,
   Moon,
   Monitor,
+  LibraryBig,
+  X,
 } from "lucide-react";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { Toaster, toast } from "sonner";
 import { AddBookDialog } from "./components/AddBookDialog";
 import { invoke } from "@tauri-apps/api/core";
 import { DetailsDialog } from "./components/DetailsDialog";
-import { cn } from "./utils";
+import { cn, getColorForGroup } from "./utils";
 import { loadSettings } from "./lib/store";
 import { BookNumberDialog } from "./components/BookNumberDialog";
 import { emit, listen } from "@tauri-apps/api/event";
 import { exists, readFile } from "@tauri-apps/plugin-fs";
 import { Book, BookWithThumbnail } from "./types";
+import { GroupingDialog } from "./components/GroupingDialog";
 
 type Theme = "light" | "dark" | "system";
 
@@ -40,6 +43,8 @@ function App() {
     undefined,
   );
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [groupingOpen, setGroupingOpen] = useState(false);
+  const [groups, setGroups] = useState<string[]>([]);
   const [unknownIdentifier, setUnknownIdentifier] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -260,6 +265,14 @@ function App() {
       onClick: toggleEditMode,
     },
     {
+      id: "grouping",
+      icon: <LibraryBig size={18} />,
+      ariaLabel: "Grouping",
+      onClick: () => {
+        setGroupingOpen(true);
+      },
+    },
+    {
       id: "settings",
       icon: <Cog size={18} />,
       ariaLabel: "Settings",
@@ -279,28 +292,54 @@ function App() {
 
       <div className="fixed top-0 left-0 right-0 z-20 bg-transparent pointer-events-none select-none">
         <div className="flex justify-center">
-          <div className="flex flex-col justify-center">
+          <div className="flex flex-col items-center">
             <div className="pointer-events-auto">
               <PillNav items={items} />
             </div>
-            <div className="flex flex-row gap-2">
-              <span
-                className={cn(
-                  "pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-orange-400/40 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 dark:bg-orange-500/30 transition-all duration-300",
-                  editMode
-                    ? "opacity-100 scale-100"
-                    : "opacity-0 scale-95 pointer-events-none",
+            {(editMode || groups.length > 0) && (
+              <div className="flex flex-row flex-wrap justify-center max-w-3xl gap-2 pt-4 px-4">
+                {editMode && (
+                  <span
+                    className={cn(
+                      "pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-orange-400/40 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 dark:bg-orange-500/30 transition-all duration-300",
+                    )}
+                  >
+                    <PencilLine size={14} />
+                    Edit mode
+                  </span>
                 )}
-              >
-                <PencilLine size={14} />
-                Edit mode
-              </span>
-            </div>
+                {groups.map((group) => (
+                  <span
+                    key={group}
+                    className={cn(
+                      "pointer-events-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5",
+                      "text-xs font-medium transition-all duration-300",
+                      getColorForGroup(group),
+                    )}
+                  >
+                    <button
+                      onClick={() => {
+                        setGroups(groups.filter((g) => g !== group));
+                      }}
+                      className={cn(
+                        "rounded-full",
+                        "hover:bg-black/10 dark:hover:bg-white/10",
+                        "transition-colors",
+                      )}
+                      aria-label={`Remove ${group}`}
+                    >
+                      <X size={14} />
+                    </button>
+                    {group}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto pt-20 bg-white dark:bg-zinc-900 transition-colors">
+      <div className="flex-1 overflow-y-auto pt-24 bg-white dark:bg-zinc-900 transition-colors">
         <BookGrid
           books={books}
           loading={loading}
@@ -348,6 +387,21 @@ function App() {
           emit("book-updated");
         }}
         onSubmit={handleSetBookNumber}
+      />
+      <GroupingDialog
+        open={groupingOpen}
+        onClose={() => {
+          setGroupingOpen(false);
+        }}
+        onClearAll={() => setGroups([])}
+        groups={groups}
+        knownGroups={[]}
+        onGroupAdd={(group: string) => {
+          setGroups([...groups, group]);
+        }}
+        onGroupRemove={(group: string) => {
+          setGroups(groups.filter((g) => g !== group));
+        }}
       />
     </div>
   );
