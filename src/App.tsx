@@ -317,6 +317,7 @@ function App() {
     const query = searchQuery.toLowerCase();
 
     // First filter by search query if present
+    const customValues = Object.values(book.book.custom_fields);
     const matchesSearch =
       !query ||
       book.book.title.toLowerCase().includes(query) ||
@@ -324,6 +325,7 @@ function App() {
         author.name.toLowerCase().includes(query),
       ) ||
       book.book.publisher?.toLowerCase().includes(query) ||
+      customValues.some((v) => v.toLowerCase().includes(query)) ||
       book.book.groups.some((group) => group.toLowerCase().includes(query));
 
     // Then filter by selected groups if any
