@@ -32,7 +32,7 @@ export function DetailsDialog({
     publisher: initial.book.publisher ?? "",
     published_date: initial.book.published_date ?? "",
     description: initial.book.description ?? "",
-    page_count: initial.book.page_count?.toString() ?? "",
+    page_count: initial.book.page_count,
     language: initial.book.language ?? "",
     authors: initial.authors.join(", "),
   });
@@ -44,7 +44,7 @@ export function DetailsDialog({
       publisher: initial.book.publisher ?? "",
       published_date: initial.book.published_date ?? "",
       description: initial.book.description ?? "",
-      page_count: initial.book.page_count?.toString() ?? "",
+      page_count: initial.book.page_count,
       language: initial.book.language ?? "",
       authors: initial.authors.map((a) => a.name.trim()).join(", "),
     });
@@ -66,7 +66,7 @@ export function DetailsDialog({
       (form.publisher || "") === (initial.book.publisher || "") &&
       (form.published_date || "") === (initial.book.published_date || "") &&
       (form.description || "") === (initial.book.description || "") &&
-      (form.page_count || "") === (initial.book.page_count?.toString() || "") &&
+      form.page_count === initial.book.page_count &&
       (form.language || "") === (initial.book.language || "") &&
       eqAuthors
     );
@@ -103,7 +103,7 @@ export function DetailsDialog({
           publisher: form.publisher || null,
           published_date: form.published_date || null,
           description: form.description || null,
-          page_count: form.page_count ? parseInt(form.page_count, 10) : null,
+          page_count: form.page_count,
           language: form.language || null,
           authors: authorsArr,
         },
@@ -217,8 +217,8 @@ export function DetailsDialog({
                     type="number"
                     step="1"
                     onChange={(v) => {
-                      const value = parseInt(v, 10) || undefined;
-                      if (value) {
+                      const value = v === "" ? undefined : parseInt(v, 10);
+                      if (value !== undefined) {
                         setForm((f) => ({ ...f, number: value }));
                       }
                     }}
@@ -252,8 +252,14 @@ export function DetailsDialog({
                   <Field
                     label="Pages"
                     value={form.page_count}
-                    onChange={(v) => setForm((f) => ({ ...f, page_count: v }))}
-                    inputMode="numeric"
+                    type="number"
+                    step="1"
+                    onChange={(v) => {
+                      const value = v === "" ? undefined : parseInt(v, 10);
+                      if (value !== undefined) {
+                        setForm((f) => ({ ...f, page_count: value }));
+                      }
+                    }}
                   />
                   <Field
                     label="Language"

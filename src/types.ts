@@ -7,7 +7,7 @@ export interface Book {
   year?: string;
   published_date?: string | null;
   description?: string | null;
-  page_count?: number | null;
+  page_count?: number;
   language?: string | null;
   print_type?: string | null;
   maturity_rating?: string | null;
