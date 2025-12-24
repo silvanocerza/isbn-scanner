@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { cn, getColorForGroup } from "../utils";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { X, Save, ChevronLeft, ChevronRight } from "lucide-react";
 import { BookWithThumbnail } from "../types";
@@ -12,6 +13,7 @@ export interface DetailsDialogProps {
   onPrev?: () => void;
   hasNext?: boolean;
   hasPrev?: boolean;
+  knownGroups?: string[];
 }
 
 export function DetailsDialog({
@@ -23,8 +25,12 @@ export function DetailsDialog({
   onPrev,
   hasNext = false,
   hasPrev = false,
+  knownGroups = [],
 }: DetailsDialogProps) {
   const [saving, setSaving] = useState(false);
+  const [groupInput, setGroupInput] = useState("");
+  const [groupSelectedIndex, setGroupSelectedIndex] = useState(-1);
+  const groupInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     title: initial.book.title,
@@ -50,7 +56,77 @@ export function DetailsDialog({
       authors: initial.authors.map((a) => a.name.trim()).join(", "),
       groups: initial.book.groups.join(", "),
     });
+    setGroupInput("");
+    setGroupSelectedIndex(-1);
   }, [initial, editMode]);
+
+  const currentGroups = useMemo(
+    () =>
+      form.groups
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    [form.groups],
+  );
+
+  const allKnownGroups = useMemo(
+    () => Array.from(new Set([...knownGroups, ...initial.book.groups])),
+    [knownGroups, initial.book.groups],
+  );
+
+  const filteredGroupSuggestions = useMemo(
+    () =>
+      allKnownGroups.filter(
+        (group) =>
+          groupInput.trim() &&
+          group.toLowerCase().includes(groupInput.toLowerCase()) &&
+          !currentGroups.includes(group),
+      ),
+    [allKnownGroups, groupInput, currentGroups],
+  );
+
+  useEffect(() => {
+    setGroupSelectedIndex(-1);
+  }, [groupInput]);
+
+  const handleGroupAdd = (group: string) => {
+    if (!currentGroups.includes(group)) {
+      const newGroups = [...currentGroups, group].join(", ");
+      setForm((f) => ({ ...f, groups: newGroups }));
+    }
+    setGroupInput("");
+    setGroupSelectedIndex(-1);
+  };
+
+  const handleGroupRemove = (group: string) => {
+    const newGroups = currentGroups.filter((g) => g !== group).join(", ");
+    setForm((f) => ({ ...f, groups: newGroups }));
+  };
+
+  const handleGroupKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (filteredGroupSuggestions.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setGroupSelectedIndex((prev) =>
+          prev < filteredGroupSuggestions.length - 1 ? prev + 1 : prev,
+        );
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setGroupSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (groupSelectedIndex >= 0) {
+          handleGroupAdd(filteredGroupSuggestions[groupSelectedIndex]);
+        } else if (groupInput.trim()) {
+          handleGroupAdd(groupInput.trim());
+        }
+        return;
+      }
+    } else if (e.key === "Enter" && groupInput.trim()) {
+      e.preventDefault();
+      handleGroupAdd(groupInput.trim());
+    }
+  };
 
   const dirty = useMemo(() => {
     const authorsArr = form.authors
@@ -260,11 +336,86 @@ export function DetailsDialog({
                   value={form.authors}
                   onChange={(v) => setForm((f) => ({ ...f, authors: v }))}
                 />
-                <Field
-                  label="Groups (comma-separated)"
-                  value={form.groups}
-                  onChange={(v) => setForm((f) => ({ ...f, groups: v }))}
-                />
+
+                <div className="block group">
+                  <span className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Groups
+                  </span>
+                  <div className="relative">
+                    <input
+                      ref={groupInputRef}
+                      type="text"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      value={groupInput}
+                      onChange={(e) => setGroupInput(e.target.value)}
+                      onKeyDown={handleGroupKeyDown}
+                      placeholder="Add a group..."
+                      className={cn(
+                        "w-full rounded-lg border border-gray-300 dark:border-zinc-600 px-3.5 py-2.5 text-sm outline-none transition-all",
+                        "placeholder:text-gray-400 dark:placeholder:text-gray-500",
+                        "bg-white dark:bg-zinc-700 text-gray-900 dark:text-white",
+                        "focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20",
+                      )}
+                    />
+                    {filteredGroupSuggestions.length > 0 && (
+                      <div
+                        className={cn(
+                          "absolute top-full left-0 right-0 mt-2 rounded-lg z-10",
+                          "bg-white dark:bg-zinc-700",
+                          "border border-gray-300 dark:border-zinc-600",
+                          "shadow-lg max-h-48 overflow-y-auto",
+                        )}
+                      >
+                        {filteredGroupSuggestions.map((suggestion, index) => (
+                          <button
+                            key={suggestion}
+                            type="button"
+                            onClick={() => handleGroupAdd(suggestion)}
+                            className={cn(
+                              "w-full text-left px-3 py-2",
+                              "text-sm text-gray-900 dark:text-white",
+                              "transition-colors",
+                              "first:rounded-t-lg last:rounded-b-lg",
+                              groupSelectedIndex === index
+                                ? "bg-blue-500 text-white"
+                                : "hover:bg-gray-100 dark:hover:bg-zinc-600",
+                            )}
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {currentGroups.map((group) => (
+                      <span
+                        key={group}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5",
+                          "text-xs font-medium transition-all duration-300",
+                          getColorForGroup(group),
+                        )}
+                      >
+                        {group}
+                        <button
+                          type="button"
+                          onClick={() => handleGroupRemove(group)}
+                          className={cn(
+                            "rounded-full p-0.5",
+                            "hover:bg-black/10 dark:hover:bg-white/10",
+                            "transition-colors",
+                          )}
+                          aria-label={`Remove ${group}`}
+                        >
+                          <X size={14} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
                 <TextArea
                   label="Description"
                   value={form.description}
@@ -410,7 +561,31 @@ export function DetailsDialog({
                   <ViewField label="Year" value={form.published_date} />
                 </div>
                 <ViewField label="Authors" value={form.authors} />
-                <ViewField label="Groups" value={form.groups} />
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    Groups
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {initial.book.groups.length > 0 ? (
+                      initial.book.groups.map((group) => (
+                        <span
+                          key={group}
+                          className={cn(
+                            "inline-flex items-center rounded-full px-3 py-1.5",
+                            "text-xs font-medium transition-all duration-300",
+                            getColorForGroup(group),
+                          )}
+                        >
+                          {group}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-gray-900 dark:text-gray-100 text-sm">
+                        —
+                      </span>
+                    )}
+                  </div>
+                </div>
                 <ViewField
                   label="Description"
                   value={form.description}

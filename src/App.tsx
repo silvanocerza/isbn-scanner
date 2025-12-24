@@ -390,6 +390,7 @@ function App() {
           onClose={() => setDetailsOpen(false)}
           editMode={editMode}
           initial={selectedBook}
+          knownGroups={knownGroups}
           onNext={() => {
             const currentIndex = filteredBooks.indexOf(selectedBook);
             setSelectedBook(filteredBooks[currentIndex + 1]);
