@@ -26,6 +26,7 @@ export interface Book {
   web_reader_link?: string | null;
   access_view_status?: string | null;
   quote_sharing_allowed?: boolean | null;
+  groups: string[];
 }
 
 export interface BookWithThumbnail {

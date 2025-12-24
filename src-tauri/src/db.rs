@@ -35,6 +35,8 @@ pub struct Book {
     pub web_reader_link: Option<String>,
     pub access_view_status: Option<String>,
     pub quote_sharing_allowed: Option<i64>,
+    #[sqlx(skip)]
+    pub groups: Vec<String>,
 }
 
 #[derive(Debug, Serialize, FromRow)]
@@ -61,6 +63,7 @@ pub struct UpdateBookPayload {
     pub page_count: Option<i64>,
     pub language: Option<String>,
     pub authors: Vec<String>,
+    pub groups: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -119,7 +122,7 @@ pub async fn fetch_all_books(
     let books_dir = app_data_dir.join("books");
 
     let mut result = Vec::new();
-    for book in books {
+    for mut book in books {
         let authors = sqlx::query_as::<_, Author>(
             r#"
             SELECT a.name
@@ -127,6 +130,19 @@ pub async fn fetch_all_books(
             JOIN book_authors ba ON a.author_id = ba.author_id
             WHERE ba.volume_id = ?
             ORDER BY ba.position
+            "#,
+        )
+        .bind(&book.volume_id)
+        .fetch_all(sqlite_pool)
+        .await?;
+
+        let groups = sqlx::query_scalar::<_, String>(
+            r#"
+            SELECT g.name
+            FROM groups g
+            JOIN book_groups bg ON g.group_id = bg.group_id
+            WHERE bg.volume_id = ?
+            ORDER BY g.name
             "#,
         )
         .bind(&book.volume_id)
@@ -152,6 +168,8 @@ pub async fn fetch_all_books(
             None
         };
 
+        book.groups = groups;
+
         result.push(BookWithThumbnail {
             book,
             authors,
@@ -165,7 +183,7 @@ pub async fn fetch_all_books(
 
 pub async fn get_book(pool: &tauri_plugin_sql::DbPool, volume_id: &str) -> anyhow::Result<Book> {
     let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
-    let book = sqlx::query_as::<_, Book>(
+    let mut book = sqlx::query_as::<_, Book>(
         r#"
         SELECT
             volume_id, title, number, publisher, published_date, description,
@@ -182,6 +200,21 @@ pub async fn get_book(pool: &tauri_plugin_sql::DbPool, volume_id: &str) -> anyho
     .bind(volume_id)
     .fetch_one(sqlite_pool)
     .await?;
+
+    let groups = sqlx::query_scalar::<_, String>(
+        r#"
+        SELECT g.name
+        FROM groups g
+        JOIN book_groups bg ON g.group_id = bg.group_id
+        WHERE bg.volume_id = ?
+        ORDER BY g.name
+        "#,
+    )
+    .bind(volume_id)
+    .fetch_all(sqlite_pool)
+    .await?;
+
+    book.groups = groups;
     Ok(book)
 }
 
@@ -190,7 +223,7 @@ pub async fn find_books_containing_title(
     title: &str,
 ) -> anyhow::Result<Vec<Book>> {
     let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
-    let books = sqlx::query_as::<_, Book>(
+    let mut books = sqlx::query_as::<_, Book>(
         r#"
         SELECT
             volume_id, title, number, publisher, published_date, description,
@@ -207,6 +240,23 @@ pub async fn find_books_containing_title(
     .bind(format!("%{title}%"))
     .fetch_all(sqlite_pool)
     .await?;
+
+    for book in &mut books {
+        let groups = sqlx::query_scalar::<_, String>(
+            r#"
+            SELECT g.name
+            FROM groups g
+            JOIN book_groups bg ON g.group_id = bg.group_id
+            WHERE bg.volume_id = ?
+            ORDER BY g.name
+            "#,
+        )
+        .bind(&book.volume_id)
+        .fetch_all(sqlite_pool)
+        .await?;
+
+        book.groups = groups;
+    }
 
     Ok(books)
 }
@@ -237,6 +287,7 @@ pub async fn insert_book(
     title: &str,
     number: Option<i64>,
     authors: &[String],
+    groups: &[String],
     publisher: Option<&str>,
     year: Option<&str>,
     identifier: Option<&str>,
@@ -300,6 +351,28 @@ pub async fn insert_book(
             .bind(&volume_id)
             .bind(pos as i64)
             .bind(name)
+            .execute(&mut *tx)
+            .await?;
+        }
+    }
+
+    // Groups (optional)
+    if !groups.is_empty() {
+        for group_name in groups {
+            sqlx::query(r#"INSERT INTO groups (name) VALUES (?) ON CONFLICT(name) DO NOTHING"#)
+                .bind(group_name)
+                .execute(&mut *tx)
+                .await?;
+
+            sqlx::query(
+                r#"
+                INSERT INTO book_groups (volume_id, group_id)
+                SELECT ?, group_id
+                FROM groups WHERE name = ?
+                "#,
+            )
+            .bind(&volume_id)
+            .bind(group_name)
             .execute(&mut *tx)
             .await?;
         }
@@ -396,6 +469,31 @@ pub async fn update_book(
         .await?;
     }
 
+    // Replace groups list
+    sqlx::query("DELETE FROM book_groups WHERE volume_id = ?")
+        .bind(&payload.volume_id)
+        .execute(&mut *tx)
+        .await?;
+
+    for group_name in &payload.groups {
+        sqlx::query(r#"INSERT INTO groups (name) VALUES (?) ON CONFLICT(name) DO NOTHING"#)
+            .bind(group_name)
+            .execute(&mut *tx)
+            .await?;
+
+        sqlx::query(
+            r#"
+            INSERT INTO book_groups (volume_id, group_id)
+            SELECT ?, group_id
+            FROM groups WHERE name = ?
+            "#,
+        )
+        .bind(&payload.volume_id)
+        .bind(group_name)
+        .execute(&mut *tx)
+        .await?;
+    }
+
     tx.commit().await?;
     Ok(())
 }
@@ -473,7 +571,7 @@ pub async fn find_comic_by_ean(
     ean: &str,
 ) -> anyhow::Result<Option<Book>> {
     let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
-    let book = sqlx::query_as::<_, Book>(
+    let mut book = sqlx::query_as::<_, Book>(
         r#"
         SELECT DISTINCT b.*
         FROM books b
@@ -484,6 +582,23 @@ pub async fn find_comic_by_ean(
     .bind(ean)
     .fetch_optional(sqlite_pool)
     .await?;
+
+    if let Some(ref mut b) = book {
+        let groups = sqlx::query_scalar::<_, String>(
+            r#"
+            SELECT g.name
+            FROM groups g
+            JOIN book_groups bg ON g.group_id = bg.group_id
+            WHERE bg.volume_id = ?
+            ORDER BY g.name
+            "#,
+        )
+        .bind(&b.volume_id)
+        .fetch_all(sqlite_pool)
+        .await?;
+
+        b.groups = groups;
+    }
 
     Ok(book)
 }
@@ -580,6 +695,20 @@ pub async fn clone_book(
     .execute(&mut *tx)
     .await?;
 
+    // Clone groups
+    sqlx::query(
+        r#"
+        INSERT INTO book_groups (volume_id, group_id)
+        SELECT ?, group_id
+        FROM book_groups
+        WHERE volume_id = ?
+        "#,
+    )
+    .bind(&new_volume_id)
+    .bind(volume_id)
+    .execute(&mut *tx)
+    .await?;
+
     // Clone identifiers
     sqlx::query(
         r#"
@@ -596,4 +725,12 @@ pub async fn clone_book(
 
     tx.commit().await?;
     Ok(new_volume_id)
+}
+
+pub async fn get_all_groups(pool: &tauri_plugin_sql::DbPool) -> anyhow::Result<Vec<String>> {
+    let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
+    let groups = sqlx::query_scalar::<_, String>("SELECT name FROM groups ORDER BY name")
+        .fetch_all(sqlite_pool)
+        .await?;
+    Ok(groups)
 }

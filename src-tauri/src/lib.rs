@@ -25,6 +25,7 @@ pub fn run() {
         crate::migrations::MIGRATION001,
         crate::migrations::MIGRATION002,
         crate::migrations::MIGRATION003,
+        crate::migrations::MIGRATION004,
     ];
 
     let config =
@@ -54,6 +55,7 @@ pub fn run() {
             crate::commands::export_books_csv,
             crate::commands::find_comic_by_ean,
             crate::commands::clone_book,
+            crate::commands::get_all_groups,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

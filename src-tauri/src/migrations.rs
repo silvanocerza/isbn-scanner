@@ -110,3 +110,27 @@ pub const MIGRATION003: Migration = Migration {
     ",
     kind: MigrationKind::Up,
 };
+
+pub const MIGRATION004: Migration = Migration {
+    version: 4,
+    description: "add_groups",
+    sql: "
+    CREATE TABLE IF NOT EXISTS groups (
+      group_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE
+    );
+
+    CREATE TABLE IF NOT EXISTS book_groups (
+      volume_id TEXT NOT NULL,
+      group_id INTEGER NOT NULL,
+      PRIMARY KEY (volume_id, group_id),
+      FOREIGN KEY (volume_id) REFERENCES books(volume_id) ON DELETE CASCADE,
+      FOREIGN KEY (group_id) REFERENCES groups(group_id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_groups_name ON groups(name);
+    CREATE INDEX IF NOT EXISTS idx_book_groups_group ON book_groups(group_id);
+    CREATE INDEX IF NOT EXISTS idx_book_groups_volume ON book_groups(volume_id);
+    ",
+    kind: MigrationKind::Up,
+};

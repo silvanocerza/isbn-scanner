@@ -34,7 +34,8 @@ export function DetailsDialog({
     description: initial.book.description ?? "",
     page_count: initial.book.page_count,
     language: initial.book.language ?? "",
-    authors: initial.authors.join(", "),
+    authors: initial.authors.map((a) => a.name.trim()).join(", "),
+    groups: initial.book.groups.join(", "),
   });
 
   useEffect(() => {
@@ -47,6 +48,7 @@ export function DetailsDialog({
       page_count: initial.book.page_count,
       language: initial.book.language ?? "",
       authors: initial.authors.map((a) => a.name.trim()).join(", "),
+      groups: initial.book.groups.join(", "),
     });
   }, [initial, editMode]);
 
@@ -60,6 +62,15 @@ export function DetailsDialog({
       authorsArr.length === origAuthors.length &&
       authorsArr.every((a, i) => a === origAuthors[i]);
 
+    const groupsArr = form.groups
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const origGroups = initial.book.groups;
+    const eqGroups =
+      groupsArr.length === origGroups.length &&
+      groupsArr.every((g, i) => g === origGroups[i]);
+
     return !(
       form.title === initial.book.title &&
       form.number === initial.book.number &&
@@ -68,7 +79,8 @@ export function DetailsDialog({
       (form.description || "") === (initial.book.description || "") &&
       form.page_count === initial.book.page_count &&
       (form.language || "") === (initial.book.language || "") &&
-      eqAuthors
+      eqAuthors &&
+      eqGroups
     );
   }, [form, initial]);
 
@@ -95,6 +107,10 @@ export function DetailsDialog({
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean);
+      const groupsArr = form.groups
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
       await invoke("update_book", {
         payload: {
           volume_id: initial.book.volume_id,
@@ -106,6 +122,7 @@ export function DetailsDialog({
           page_count: form.page_count,
           language: form.language || null,
           authors: authorsArr,
+          groups: groupsArr,
         },
       });
       onClose();
@@ -242,6 +259,11 @@ export function DetailsDialog({
                   label="Authors (comma-separated)"
                   value={form.authors}
                   onChange={(v) => setForm((f) => ({ ...f, authors: v }))}
+                />
+                <Field
+                  label="Groups (comma-separated)"
+                  value={form.groups}
+                  onChange={(v) => setForm((f) => ({ ...f, groups: v }))}
                 />
                 <TextArea
                   label="Description"
@@ -388,6 +410,7 @@ export function DetailsDialog({
                   <ViewField label="Year" value={form.published_date} />
                 </div>
                 <ViewField label="Authors" value={form.authors} />
+                <ViewField label="Groups" value={form.groups} />
                 <ViewField
                   label="Description"
                   value={form.description}

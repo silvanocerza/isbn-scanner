@@ -93,6 +93,7 @@ pub async fn add_book(
     title: String,
     number: Option<i64>,
     authors: Option<Vec<String>>,
+    groups: Option<Vec<String>>,
     publisher: Option<String>,
     year: Option<String>,
     identifier: Option<String>,
@@ -110,6 +111,7 @@ pub async fn add_book(
         &title,
         number,
         &authors.unwrap_or_default(),
+        &groups.unwrap_or_default(),
         publisher.as_deref(),
         year.as_deref(),
         identifier.as_deref(),
@@ -219,4 +221,15 @@ pub async fn clone_book(volume_id: String, app_handle: tauri::AppHandle) -> Resu
         .await
         .map_err(|e| e.to_string())?;
     Ok(new_volume_id)
+}
+
+#[tauri::command]
+pub async fn get_all_groups(app_handle: tauri::AppHandle) -> Result<Vec<String>, String> {
+    let instances = app_handle.state::<DbInstances>();
+    let guard = instances.0.read().await;
+    let pool = guard.get("sqlite:books.db").ok_or("Database not found")?;
+
+    crate::db::get_all_groups(pool)
+        .await
+        .map_err(|e| e.to_string())
 }

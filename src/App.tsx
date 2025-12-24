@@ -24,7 +24,7 @@ import { cn, getColorForGroup } from "./utils";
 import { loadSettings } from "./lib/store";
 import { BookNumberDialog } from "./components/BookNumberDialog";
 import { emit, listen } from "@tauri-apps/api/event";
-import { exists, readFile } from "@tauri-apps/plugin-fs";
+import { readFile } from "@tauri-apps/plugin-fs";
 import { Book, BookWithThumbnail } from "./types";
 import { GroupingDialog } from "./components/GroupingDialog";
 
@@ -45,6 +45,7 @@ function App() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [groupingOpen, setGroupingOpen] = useState(false);
   const [groups, setGroups] = useState<string[]>([]);
+  const [knownGroups, setKnownGroups] = useState<string[]>([]);
   const [unknownIdentifier, setUnknownIdentifier] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -86,6 +87,15 @@ function App() {
     }
   };
 
+  const loadGroups = async () => {
+    try {
+      const result = await invoke<string[]>("get_all_groups");
+      setKnownGroups(result);
+    } catch (err) {
+      console.error("Failed to load groups:", err);
+    }
+  };
+
   useEffect(() => {
     localStorage.setItem("theme", theme);
     applyTheme(theme);
@@ -93,8 +103,15 @@ function App() {
 
   useEffect(() => {
     loadBooks();
-    const un1 = listen("book-added", loadBooks);
-    const un2 = listen("book-updated", loadBooks);
+    loadGroups();
+    const un1 = listen("book-added", () => {
+      loadBooks();
+      loadGroups();
+    });
+    const un2 = listen("book-updated", () => {
+      loadBooks();
+      loadGroups();
+    });
     return () => {
       un1.then((f) => f());
       un2.then((f) => f());
@@ -187,6 +204,7 @@ function App() {
   }) => {
     await invoke<string>("add_book", {
       ...payload,
+      groups,
       identifier: unknownIdentifier,
     });
     setUnknownIdentifier("");
@@ -280,6 +298,13 @@ function App() {
     },
   ];
 
+  const filteredBooks =
+    groups.length > 0
+      ? books.filter((bookItem) =>
+          groups.every((group) => bookItem.book.groups.includes(group)),
+        )
+      : books;
+
   return (
     <div className="h-screen w-screen flex flex-col">
       <Toaster richColors />
@@ -341,7 +366,7 @@ function App() {
 
       <div className="flex-1 overflow-y-auto pt-24 bg-white dark:bg-zinc-900 transition-colors">
         <BookGrid
-          books={books}
+          books={filteredBooks}
           loading={loading}
           error={error}
           onSelect={handleSelect}
@@ -366,17 +391,18 @@ function App() {
           editMode={editMode}
           initial={selectedBook}
           onNext={() => {
-            const currentIndex = books.indexOf(selectedBook);
-            setSelectedBook(books[currentIndex + 1]);
+            const currentIndex = filteredBooks.indexOf(selectedBook);
+            setSelectedBook(filteredBooks[currentIndex + 1]);
           }}
           onPrev={() => {
-            const currentIndex = books.indexOf(selectedBook);
-            setSelectedBook(books[currentIndex - 1]);
+            const currentIndex = filteredBooks.indexOf(selectedBook);
+            setSelectedBook(filteredBooks[currentIndex - 1]);
           }}
           hasNext={
-            selectedBook && books.indexOf(selectedBook) !== books.length - 1
+            selectedBook &&
+            filteredBooks.indexOf(selectedBook) !== filteredBooks.length - 1
           }
-          hasPrev={selectedBook && books.indexOf(selectedBook) !== 0}
+          hasPrev={selectedBook && filteredBooks.indexOf(selectedBook) !== 0}
         />
       )}
       <BookNumberDialog
@@ -395,7 +421,7 @@ function App() {
         }}
         onClearAll={() => setGroups([])}
         groups={groups}
-        knownGroups={[]}
+        knownGroups={knownGroups}
         onGroupAdd={(group: string) => {
           setGroups([...groups, group]);
         }}
