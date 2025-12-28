@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { isEAN13, isISBN, isOnlyDigits } from "../utils";
 import { toast } from "sonner";
-import { Book } from "./BookGrid";
+import { Book } from "../types";
 
 interface KeypressListenerProps {
   onBookSaved?: (message: string) => void;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { cn } from "../utils";
-import { Book } from "./BookGrid";
+import { Book } from "../types";
 
 type BookNumberDialogProps = {
   open: boolean;
