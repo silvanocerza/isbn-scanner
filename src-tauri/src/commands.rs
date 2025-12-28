@@ -195,7 +195,7 @@ pub async fn export_books_csv(app_handle: tauri::AppHandle) -> Result<String, St
     let guard = instances.0.read().await;
     let pool = guard.get("sqlite:books.db").ok_or("Database not found")?;
 
-    crate::db::export_books_to_csv(pool, &path_buf)
+    crate::db::export_books_to_csv(pool, &path_buf, &app_handle)
         .await
         .map_err(|e| e.to_string())?;
 

@@ -603,6 +603,7 @@ pub async fn update_book(
 pub async fn export_books_to_csv(
     pool: &tauri_plugin_sql::DbPool,
     save_path: &std::path::Path,
+    app_handle: &tauri::AppHandle,
 ) -> anyhow::Result<()> {
     let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
 
@@ -631,6 +632,15 @@ pub async fn export_books_to_csv(
 
     let file = std::fs::File::create(save_path)?;
     let mut wtr = csv::Writer::from_writer(file);
+
+    // Create images directory next to CSV file
+    let csv_parent = save_path.parent().unwrap_or(std::path::Path::new("."));
+    let images_dir = csv_parent.join("images");
+    std::fs::create_dir_all(&images_dir)?;
+
+    // Get app books directory
+    let app_data_dir = app_handle.path().app_data_dir()?;
+    let books_dir = app_data_dir.join("books");
 
     // Write header
     let mut headers = vec![
@@ -724,6 +734,13 @@ pub async fn export_books_to_csv(
         .await?;
 
         let custom_fields = load_custom_fields_for_book(sqlite_pool, &book.volume_id).await?;
+
+        // Copy thumbnail if it exists
+        let source_path = books_dir.join(format!("{}.jpg", book.volume_id));
+        if source_path.exists() {
+            let dest_path = images_dir.join(format!("{}.jpg", book.volume_id));
+            std::fs::copy(&source_path, &dest_path).ok();
+        }
 
         let mut record = vec![
             book.volume_id.clone(),
