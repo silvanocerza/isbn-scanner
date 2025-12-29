@@ -248,3 +248,18 @@ pub async fn get_all_custom_fields(app_handle: tauri::AppHandle) -> Result<Vec<S
         .await
         .map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn set_book_groups(
+    volume_id: &str,
+    groups: Vec<String>,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    let instances = app_handle.state::<DbInstances>();
+    let guard = instances.0.read().await;
+    let pool = guard.get("sqlite:books.db").ok_or("Database not found")?;
+
+    crate::db::set_book_groups(pool, volume_id, &groups)
+        .await
+        .map_err(|e| e.to_string())
+}

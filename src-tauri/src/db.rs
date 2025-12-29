@@ -1000,3 +1000,41 @@ pub async fn get_all_custom_fields(pool: &tauri_plugin_sql::DbPool) -> anyhow::R
         .await?;
     Ok(fields)
 }
+
+pub async fn set_book_groups(
+    pool: &tauri_plugin_sql::DbPool,
+    volume_id: &str,
+    groups: &[String],
+) -> anyhow::Result<()> {
+    let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
+    let mut tx = sqlite_pool.begin().await?;
+
+    // Remove existing groups
+    sqlx::query("DELETE FROM book_groups WHERE volume_id = ?")
+        .bind(volume_id)
+        .execute(&mut *tx)
+        .await?;
+
+    // Insert new groups
+    for group_name in groups {
+        sqlx::query(r#"INSERT INTO groups (name) VALUES (?) ON CONFLICT(name) DO NOTHING"#)
+            .bind(group_name)
+            .execute(&mut *tx)
+            .await?;
+
+        sqlx::query(
+            r#"
+            INSERT INTO book_groups (volume_id, group_id)
+            SELECT ?, group_id
+            FROM groups WHERE name = ?
+            "#,
+        )
+        .bind(volume_id)
+        .bind(group_name)
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    tx.commit().await?;
+    Ok(())
+}

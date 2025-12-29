@@ -58,6 +58,7 @@ pub fn run() {
             crate::commands::clone_book,
             crate::commands::get_all_groups,
             crate::commands::get_all_custom_fields,
+            crate::commands::set_book_groups,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

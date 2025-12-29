@@ -159,13 +159,20 @@ function App() {
     setDetailsOpen(true);
   };
 
-  const handleBookSaved = async (message: string) => {
-    console.log("Success:", message);
+  const handleBookSaved = async (volume_id: string) => {
+    const result = await invoke<string>("set_book_groups", {
+      volumeId: volume_id,
+      groups: groups,
+    });
+    console.log(result);
+
+    console.log("Success:", volume_id);
     const settings = await loadSettings();
     if (settings.successSound) {
       new Audio("/success.mp3").play();
     }
-    toast.success(`Added ${message}`);
+    emit("book-updated");
+    toast.success(`Added ${volume_id}`);
   };
 
   const handleNewEAN = async (ean: string) => {
