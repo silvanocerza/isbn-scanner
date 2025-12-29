@@ -46,13 +46,31 @@ export function KeypressListener({
         }
 
         try {
-          if (!isISBN(text) && !isEAN13(text)) {
-            if (isOnlyDigits(text)) {
-              toast.error("Unknown barcode format");
+          const digits = text.replace(/\D/g, "");
+
+          // Check if it's an ISBN (10 or 13 digits starting with 978/979)
+          const isISBNFormat =
+            isISBN(text) &&
+            (digits.length === 10 ||
+              digits.startsWith("978") ||
+              digits.startsWith("979"));
+
+          if (isISBNFormat) {
+            // Handle as ISBN - fetch from Google Books
+            try {
+              const exists = await invoke<boolean>("isbn_exists", {
+                isbn: text,
+              });
+              if (exists) return;
+
+              const result = await invoke<string>("fetch_isbn", { isbn: text });
+              onBookSaved?.(result);
+            } catch (error) {
+              console.log(error);
+              onError?.(text, String(error));
             }
-            return;
-          }
-          if (isEAN13(text)) {
+          } else if (isEAN13(text)) {
+            // Handle as non-ISBN EAN-13 (periodicals/comics)
             const book = await invoke<Book | null>("find_comic_by_ean", {
               ean: text,
             });
@@ -61,17 +79,8 @@ export function KeypressListener({
             } else {
               onNewEAN?.(text);
             }
-            return;
-          }
-
-          try {
-            const exists = await invoke<boolean>("isbn_exists", { isbn: text });
-            if (exists) return;
-
-            const result = await invoke<string>("fetch_isbn", { isbn: text });
-            onBookSaved?.(result);
-          } catch (error) {
-            onError?.(text, String(error));
+          } else if (isOnlyDigits(text)) {
+            toast.error("Unknown barcode format");
           }
         } catch (err) {
           console.error("Scan handling error:", err);

@@ -279,7 +279,6 @@ impl GoogleBooksClient {
                     r#"
                     INSERT INTO book_identifiers (volume_id, type, identifier)
                     VALUES (?, ?, ?)
-                    ON CONFLICT(type, identifier) DO NOTHING
                     "#,
                 )
                 .bind(&v.id)
