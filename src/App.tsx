@@ -401,6 +401,13 @@ function App() {
                   placeholder="Search"
                   className="flex-1 max-w-2xl"
                 />
+                <span
+                  className="text-md
+                  pointer-events-none inline-flex items-center gap-1.5 rounded-full bg-blue-400/40 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 dark:bg-blue-500/30 transition-all duration-300"
+                >
+                  {filteredBooks.length}{" "}
+                  {filteredBooks.length === 1 ? "book" : "books"}
+                </span>
               </div>
             </div>
             {(editMode || groups.length > 0) && (
