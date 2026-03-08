@@ -985,6 +985,132 @@ pub async fn clone_book(
     Ok(new_volume_id)
 }
 
+/// Clone a book and set a specific number in one operation
+pub async fn clone_book_with_number(
+    pool: &tauri_plugin_sql::DbPool,
+    volume_id: &str,
+    number: i64,
+) -> anyhow::Result<String> {
+    let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
+    let mut tx = sqlite_pool.begin().await?;
+
+    // Get the original book
+    let book = sqlx::query_as::<_, Book>(
+        r#"
+        SELECT
+            volume_id, title, number, publisher, published_date, description,
+            page_count, print_type, maturity_rating, language,
+            preview_link, info_link, canonical_link, small_thumbnail,
+            thumbnail, country, saleability, is_ebook, viewability,
+            embeddable, public_domain, text_to_speech_permission,
+            epub_available, pdf_available, web_reader_link,
+            access_view_status, quote_sharing_allowed
+        FROM books
+        WHERE volume_id = ?
+        "#,
+    )
+    .bind(volume_id)
+    .fetch_one(&mut *tx)
+    .await?;
+
+    let new_volume_id = Uuid::new_v4().to_string();
+
+    // Insert cloned book with the specified number
+    sqlx::query(
+        r#"
+        INSERT INTO books (
+          volume_id, title, number, publisher, published_date,
+          description, page_count, print_type, maturity_rating,
+          language, preview_link, info_link, canonical_link,
+          small_thumbnail, thumbnail, country, saleability, is_ebook,
+          viewability, embeddable, public_domain, text_to_speech_permission,
+          epub_available, pdf_available, web_reader_link, access_view_status, quote_sharing_allowed
+        ) VALUES (
+          ?, ?, ?, ?, ?,
+          ?, ?, ?, ?,
+          ?, ?, ?, ?,
+          ?, ?, ?, ?, ?,
+          ?, ?, ?, ?,
+          ?, ?, ?, ?, ?
+        )
+        "#,
+    )
+    .bind(&new_volume_id)
+    .bind(&book.title)
+    .bind(Some(number))
+    .bind(&book.publisher)
+    .bind(&book.published_date)
+    .bind(&book.description)
+    .bind(book.page_count)
+    .bind(&book.print_type)
+    .bind(&book.maturity_rating)
+    .bind(&book.language)
+    .bind(&book.preview_link)
+    .bind(&book.info_link)
+    .bind(&book.canonical_link)
+    .bind(&book.small_thumbnail)
+    .bind(&book.thumbnail)
+    .bind(&book.country)
+    .bind(&book.saleability)
+    .bind(book.is_ebook)
+    .bind(&book.viewability)
+    .bind(book.embeddable)
+    .bind(book.public_domain)
+    .bind(&book.text_to_speech_permission)
+    .bind(book.epub_available)
+    .bind(book.pdf_available)
+    .bind(&book.web_reader_link)
+    .bind(&book.access_view_status)
+    .bind(book.quote_sharing_allowed)
+    .execute(&mut *tx)
+    .await?;
+
+    // Clone authors
+    sqlx::query(
+        r#"
+        INSERT INTO book_authors (volume_id, author_id, position)
+        SELECT ?, author_id, position
+        FROM book_authors
+        WHERE volume_id = ?
+        "#,
+    )
+    .bind(&new_volume_id)
+    .bind(volume_id)
+    .execute(&mut *tx)
+    .await?;
+
+    // Clone groups
+    sqlx::query(
+        r#"
+        INSERT INTO book_groups (volume_id, group_id)
+        SELECT ?, group_id
+        FROM book_groups
+        WHERE volume_id = ?
+        "#,
+    )
+    .bind(&new_volume_id)
+    .bind(volume_id)
+    .execute(&mut *tx)
+    .await?;
+
+    // Clone custom fields
+    sqlx::query(
+        r#"
+        INSERT INTO book_custom_fields (volume_id, field_id, value)
+        SELECT ?, field_id, value
+        FROM book_custom_fields
+        WHERE volume_id = ?
+        "#,
+    )
+    .bind(&new_volume_id)
+    .bind(volume_id)
+    .execute(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+    Ok(new_volume_id)
+}
+
 pub async fn get_all_groups(pool: &tauri_plugin_sql::DbPool) -> anyhow::Result<Vec<String>> {
     let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
     let groups = sqlx::query_scalar::<_, String>("SELECT name FROM groups ORDER BY name")

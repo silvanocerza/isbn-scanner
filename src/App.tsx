@@ -232,11 +232,14 @@ function App() {
     setUnknownIdentifier("");
   };
 
-  const handleSetBookNumber = async (volumeId: string, bookNumber: number) => {
-    await invoke("set_book_number", {
-      volumeId,
-      number: bookNumber,
-    });
+  const handleSetBookNumber = async (volumeId: string, numbers: number[]) => {
+    // Clone the book for each number in the range
+    for (const num of numbers) {
+      await invoke("clone_book_with_number", {
+        volumeId,
+        number: num,
+      });
+    }
     setBookWithoutNumber(undefined);
   };
 

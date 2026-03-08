@@ -228,6 +228,21 @@ pub async fn clone_book(volume_id: String, app_handle: tauri::AppHandle) -> Resu
 }
 
 #[tauri::command]
+pub async fn clone_book_with_number(
+    volume_id: String,
+    number: i64,
+    app_handle: tauri::AppHandle,
+) -> Result<String, String> {
+    let instances = app_handle.state::<DbInstances>();
+    let guard = instances.0.read().await;
+    let pool = guard.get("sqlite:books.db").ok_or("Database not found")?;
+    let new_volume_id = crate::db::clone_book_with_number(pool, &volume_id, number)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(new_volume_id)
+}
+
+#[tauri::command]
 pub async fn get_all_groups(app_handle: tauri::AppHandle) -> Result<Vec<String>, String> {
     let instances = app_handle.state::<DbInstances>();
     let guard = instances.0.read().await;

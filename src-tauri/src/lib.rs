@@ -56,6 +56,7 @@ pub fn run() {
             crate::commands::export_books_csv,
             crate::commands::find_comic_by_ean,
             crate::commands::clone_book,
+            crate::commands::clone_book_with_number,
             crate::commands::get_all_groups,
             crate::commands::get_all_custom_fields,
             crate::commands::set_book_groups,
