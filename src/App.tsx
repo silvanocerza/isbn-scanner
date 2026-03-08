@@ -1,7 +1,7 @@
 import "./App.css";
 import { useEffect, useState } from "react";
 import { KeypressListener } from "./components/KeypressListener";
-import { BookGrid } from "./components/BookGrid";
+import { BookGrid, GroupedBooks } from "./components/BookGrid";
 import { PillNav } from "./components/PillNav";
 import {
   Cog,
@@ -14,6 +14,7 @@ import {
   Monitor,
   LibraryBig,
   X,
+  Layers,
 } from "lucide-react";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { Toaster, toast } from "sonner";
@@ -27,6 +28,7 @@ import { emit, listen } from "@tauri-apps/api/event";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { Book, BookWithThumbnail } from "./types";
 import { GroupingDialog } from "./components/GroupingDialog";
+import { GroupDetailsDialog } from "./components/GroupDetailsDialog";
 import { SearchBox } from "./components/SearchBox";
 
 type Theme = "light" | "dark" | "system";
@@ -56,6 +58,12 @@ function App() {
     const saved = localStorage.getItem("theme");
     return (saved as Theme) || "system";
   });
+  const [groupByTitle, setGroupByTitle] = useState(() => {
+    const saved = localStorage.getItem("groupByTitle");
+    return saved === "true";
+  });
+  const [selectedGroup, setSelectedGroup] = useState<GroupedBooks | null>(null);
+  const [groupDetailsOpen, setGroupDetailsOpen] = useState(false);
 
   const loadBooks = async () => {
     try {
@@ -156,8 +164,25 @@ function App() {
 
   const handleSelect = (b: BookWithThumbnail) => {
     setSelectedBook(b);
+    setSelectedGroup(null);
     setDetailsOpen(true);
   };
+
+  const handleSelectGroup = (g: GroupedBooks) => {
+    setSelectedGroup(g);
+    setSelectedBook(null);
+    setGroupDetailsOpen(true);
+  };
+
+  const handleSelectBookFromGroup = (book: BookWithThumbnail) => {
+    setSelectedBook(book);
+    setGroupDetailsOpen(false);
+    setDetailsOpen(true);
+  };
+
+  useEffect(() => {
+    localStorage.setItem("groupByTitle", String(groupByTitle));
+  }, [groupByTitle]);
 
   const handleBookSaved = async (volume_id: string) => {
     const result = await invoke<string>("set_book_groups", {
@@ -308,6 +333,14 @@ function App() {
       onClick: toggleEditMode,
     },
     {
+      id: "group-by-title",
+      icon: (
+        <Layers size={18} className={groupByTitle ? "text-blue-500" : ""} />
+      ),
+      ariaLabel: groupByTitle ? "Ungroup books" : "Group books by title",
+      onClick: () => setGroupByTitle(!groupByTitle),
+    },
+    {
       id: "grouping",
       icon: <LibraryBig size={18} />,
       ariaLabel: "Grouping",
@@ -419,6 +452,9 @@ function App() {
           loading={loading}
           error={error}
           onSelect={handleSelect}
+          onSelectGroup={handleSelectGroup}
+          groupByTitle={groupByTitle}
+          onToggleGrouping={() => setGroupByTitle(!groupByTitle)}
         />
       </div>
 
@@ -479,6 +515,12 @@ function App() {
         onGroupRemove={(group: string) => {
           setGroups(groups.filter((g) => g !== group));
         }}
+      />
+      <GroupDetailsDialog
+        open={groupDetailsOpen}
+        onClose={() => setGroupDetailsOpen(false)}
+        group={selectedGroup}
+        onSelectBook={handleSelectBookFromGroup}
       />
     </div>
   );

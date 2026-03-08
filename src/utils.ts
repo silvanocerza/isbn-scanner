@@ -67,3 +67,13 @@ export function getColorForGroup(group: string): string {
   const index = Math.abs(hash) % GROUP_COLORS.length;
   return GROUP_COLORS[index];
 }
+
+export function formatNumberRanges(
+  ranges: Array<{ start: number; end: number } | number>,
+): string {
+  if (ranges.length === 0) return "";
+
+  return ranges
+    .map((r) => (typeof r === "number" ? String(r) : `${r.start}-${r.end}`))
+    .join(", ");
+}
