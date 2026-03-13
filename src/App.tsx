@@ -461,7 +461,6 @@ function App() {
           onSelect={handleSelect}
           onSelectGroup={handleSelectGroup}
           groupByTitle={groupByTitle}
-          onToggleGrouping={() => setGroupByTitle(!groupByTitle)}
         />
       </div>
 

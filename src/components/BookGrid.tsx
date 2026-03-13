@@ -34,7 +34,7 @@ function groupBooksByTitle(books: BookWithThumbnail[]): GridItem[] {
     groups.get(title)!.push(book);
   }
 
-  return Array.from(groups.entries()).flatMap(([title, bookList]) => {
+  return Array.from(groups.entries()).flatMap(([title, bookList]): GridItem[] => {
     // Sort by number, putting books without numbers at the end
     const sorted = bookList.sort((a, b) => {
       const numA = a.book.number ?? Infinity;
