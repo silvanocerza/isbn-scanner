@@ -496,6 +496,18 @@ function App() {
             filteredBooks.indexOf(selectedBook) !== filteredBooks.length - 1
           }
           hasPrev={selectedBook && filteredBooks.indexOf(selectedBook) !== 0}
+          onDelete={async () => {
+            if (!selectedBook) return;
+            try {
+              await invoke("delete_book", {
+                volumeId: selectedBook.book.volume_id,
+              });
+              setDetailsOpen(false);
+              emit("book-updated");
+            } catch (err) {
+              toast.error(err instanceof Error ? err.message : String(err));
+            }
+          }}
         />
       )}
       <BookNumberDialog

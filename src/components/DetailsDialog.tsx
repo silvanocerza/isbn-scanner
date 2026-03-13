@@ -1,7 +1,7 @@
 import { cn, getColorForGroup } from "../utils";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { X, Save, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Save, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { BookWithThumbnail } from "../types";
 
 export interface DetailsDialogProps {
@@ -15,6 +15,7 @@ export interface DetailsDialogProps {
   hasPrev?: boolean;
   knownGroups?: string[];
   knownCustomFields?: string[];
+  onDelete?: () => void;
 }
 
 export function DetailsDialog({
@@ -28,6 +29,7 @@ export function DetailsDialog({
   hasPrev = false,
   knownGroups = [],
   knownCustomFields = [],
+  onDelete,
 }: DetailsDialogProps) {
   const [saving, setSaving] = useState(false);
   const [groupInput, setGroupInput] = useState("");
@@ -903,25 +905,38 @@ export function DetailsDialog({
               </div>
             )}
           </div>
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-zinc-700 bg-gray-50/50 dark:bg-zinc-800/50">
-            <button
-              className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
-              onClick={onClose}
-            >
-              Close
-            </button>
-            {editMode && (
+          <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-200 dark:border-zinc-700 bg-gray-50/50 dark:bg-zinc-800/50">
+            <div className="flex items-center">
+              {editMode && onDelete && (
+                <button
+                  className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                  onClick={onDelete}
+                >
+                  <Trash2 size={16} />
+                  Delete
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
               <button
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 dark:bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 dark:hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600"
-                onClick={onSave}
-                disabled={
-                  !editMode || saving || !dirty || form.title.trim() === ""
-                }
+                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+                onClick={onClose}
               >
-                <Save size={16} />
-                {saving ? "Saving…" : "Save"}
+                Close
               </button>
-            )}
+              {editMode && (
+                <button
+                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 dark:bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 dark:hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600"
+                  onClick={onSave}
+                  disabled={
+                    !editMode || saving || !dirty || form.title.trim() === ""
+                  }
+                >
+                  <Save size={16} />
+                  {saving ? "Saving…" : "Save"}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

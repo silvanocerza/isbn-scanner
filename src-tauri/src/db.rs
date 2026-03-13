@@ -600,6 +600,34 @@ pub async fn update_book(
     Ok(())
 }
 
+pub async fn delete_book(pool: &tauri_plugin_sql::DbPool, volume_id: &str) -> anyhow::Result<()> {
+    let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
+    let mut tx = sqlite_pool.begin().await?;
+
+    sqlx::query("DELETE FROM book_authors WHERE volume_id = ?")
+        .bind(volume_id)
+        .execute(&mut *tx)
+        .await?;
+
+    sqlx::query("DELETE FROM book_groups WHERE volume_id = ?")
+        .bind(volume_id)
+        .execute(&mut *tx)
+        .await?;
+
+    sqlx::query("DELETE FROM book_custom_fields WHERE volume_id = ?")
+        .bind(volume_id)
+        .execute(&mut *tx)
+        .await?;
+
+    sqlx::query("DELETE FROM books WHERE volume_id = ?")
+        .bind(volume_id)
+        .execute(&mut *tx)
+        .await?;
+
+    tx.commit().await?;
+    Ok(())
+}
+
 pub async fn export_books_to_csv(
     pool: &tauri_plugin_sql::DbPool,
     save_path: &std::path::Path,

@@ -172,6 +172,18 @@ pub async fn set_book_number(
 }
 
 #[tauri::command]
+pub async fn delete_book(volume_id: String, app_handle: tauri::AppHandle) -> Result<(), String> {
+    let instances = app_handle.state::<DbInstances>();
+    let guard = instances.0.read().await;
+    let pool = guard.get("sqlite:books.db").ok_or("Database not found")?;
+    crate::db::delete_book(pool, &volume_id)
+        .await
+        .map_err(|e| e.to_string())?;
+    let _ = app_handle.emit("book-updated", &"ok");
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn export_books_csv(app_handle: tauri::AppHandle) -> Result<String, String> {
     let path = app_handle
         .dialog()
