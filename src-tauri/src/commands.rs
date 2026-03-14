@@ -9,7 +9,6 @@ use tauri_plugin_sql::DbInstances;
 use crate::db::find_books_containing_title;
 use crate::db::get_book;
 use crate::db::Book;
-use crate::db::BookWithThumbnail;
 use crate::AppConfig;
 
 #[tauri::command]
@@ -30,7 +29,7 @@ pub async fn fetch_isbn(
     isbn: String,
     config: State<'_, AppConfig>,
     app_handle: tauri::AppHandle,
-) -> Result<BookWithThumbnail, String> {
+) -> Result<Book, String> {
     let instances = app_handle.state::<DbInstances>();
     let guard = instances.0.read().await;
     let pool = guard.get("sqlite:books.db").ok_or("Database not found")?;
@@ -49,7 +48,7 @@ pub async fn fetch_isbn(
     {
         Ok(Some(volume_id)) => {
             let book = get_book(pool, &app_handle, &volume_id).await.unwrap();
-            let books = find_books_containing_title(pool, book.book.title.as_str())
+            let books = find_books_containing_title(pool, book.title.as_str())
                 .await
                 .unwrap();
 
@@ -80,7 +79,7 @@ pub async fn fetch_isbn(
 #[tauri::command]
 pub async fn get_all_books(
     app_handle: tauri::AppHandle,
-) -> Result<Vec<crate::db::BookWithThumbnail>, String> {
+) -> Result<Vec<crate::db::Book>, String> {
     let instances = app_handle.state::<DbInstances>();
     let guard = instances.0.read().await;
 

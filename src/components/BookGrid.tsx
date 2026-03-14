@@ -1,33 +1,32 @@
-import { BookWithThumbnail } from "../types";
+import { Book } from "../types";
 import { formatNumberRanges } from "../utils";
 
 export interface GroupedBooks {
   title: string;
-  books: BookWithThumbnail[];
-  // The book with the lowest number, or the first book if no numbers
-  representative: BookWithThumbnail;
+  books: Book[];
+  representative: Book;
   numbers: Array<{ start: number; end: number } | number>;
   count: number;
 }
 
 export type GridItem =
-  | { type: "book"; book: BookWithThumbnail }
+  | { type: "book"; book: Book }
   | { type: "group"; group: GroupedBooks };
 
 interface BookGridProps {
-  books: BookWithThumbnail[];
+  books: Book[];
   loading: boolean;
   error: string | null;
-  onSelect: (b: BookWithThumbnail) => void;
+  onSelect: (b: Book) => void;
   onSelectGroup?: (group: GroupedBooks) => void;
   groupByTitle?: boolean;
 }
 
-function groupBooksByTitle(books: BookWithThumbnail[]): GridItem[] {
-  const groups = new Map<string, BookWithThumbnail[]>();
+function groupBooksByTitle(books: Book[]): GridItem[] {
+  const groups = new Map<string, Book[]>();
 
   for (const book of books) {
-    const title = book.book.title;
+    const title = book.title;
     if (!groups.has(title)) {
       groups.set(title, []);
     }
@@ -37,8 +36,8 @@ function groupBooksByTitle(books: BookWithThumbnail[]): GridItem[] {
   return Array.from(groups.entries()).flatMap(([title, bookList]): GridItem[] => {
     // Sort by number, putting books without numbers at the end
     const sorted = bookList.sort((a, b) => {
-      const numA = a.book.number ?? Infinity;
-      const numB = b.book.number ?? Infinity;
+      const numA = a.number ?? Infinity;
+      const numB = b.number ?? Infinity;
       return numA - numB;
     });
 
@@ -51,7 +50,7 @@ function groupBooksByTitle(books: BookWithThumbnail[]): GridItem[] {
 
     // Build number ranges
     const numbers = sorted
-      .map((b) => b.book.number)
+      .map((b) => b.number)
       .filter((n): n is number => n !== undefined)
       .sort((a, b) => a - b);
 
@@ -136,7 +135,7 @@ export function BookGrid({
           ? groupedBooks!.map((item) =>
               item.type === "book" ? (
                 <div
-                  key={item.book.book.volume_id}
+                  key={item.book.volume_id}
                   className="w-[180px]"
                   onClick={() => {
                     onSelect(item.book);
@@ -147,7 +146,7 @@ export function BookGrid({
                       {item.book.thumbnail ? (
                         <img
                           src={item.book.thumbnail}
-                          alt={item.book.book.title}
+                          alt={item.book.title}
                           loading="lazy"
                           className="absolute inset-0 h-full w-full object-cover"
                         />
@@ -161,18 +160,18 @@ export function BookGrid({
                   <div className="py-3 px-1">
                     <h2
                       className="font-semibold text-md text-gray-900 dark:text-white"
-                      title={item.book.book.title}
+                      title={item.book.title}
                     >
-                      {item.book.book.title}
-                      {item.book.book.number && <> - {item.book.book.number}</>}
+                      {item.book.title}
+                      {item.book.number && <> - {item.book.number}</>}
                     </h2>
 
                     <h4 className="text-sm text-gray-700 dark:text-gray-400">
-                      {item.book.authors.map((a) => a.name).join(", ")}
+                      {item.book.authors.join(", ")}
                     </h4>
-                    {item.book.book.publisher && (
+                    {item.book.publisher && (
                       <p className="mt-1 text-[12px] text-gray-600 dark:text-gray-500 leading-tight">
-                        {item.book.book.publisher}
+                        {item.book.publisher}
                       </p>
                     )}
                   </div>
@@ -244,13 +243,11 @@ export function BookGrid({
                     </h2>
 
                     <h4 className="text-sm text-gray-700 dark:text-gray-400">
-                      {item.group.representative.authors
-                        .map((a) => a.name)
-                        .join(", ")}
+                      {item.group.representative.authors.join(", ")}
                     </h4>
-                    {item.group.representative.book.publisher && (
+                    {item.group.representative.publisher && (
                       <p className="mt-1 text-[12px] text-gray-600 dark:text-gray-500 leading-tight">
-                        {item.group.representative.book.publisher}
+                        {item.group.representative.publisher}
                       </p>
                     )}
                   </div>
@@ -259,7 +256,7 @@ export function BookGrid({
             )
           : books.map((item) => (
               <div
-                key={item.book.volume_id}
+                key={item.volume_id}
                 className="w-[180px]"
                 onClick={() => {
                   onSelect(item);
@@ -270,7 +267,7 @@ export function BookGrid({
                     {item.thumbnail ? (
                       <img
                         src={item.thumbnail}
-                        alt={item.book.title}
+                        alt={item.title}
                         loading="lazy"
                         className="absolute inset-0 h-full w-full object-cover"
                       />
@@ -284,18 +281,18 @@ export function BookGrid({
                 <div className="py-3 px-1">
                   <h2
                     className="font-semibold text-md text-gray-900 dark:text-white"
-                    title={item.book.title}
+                    title={item.title}
                   >
-                    {item.book.title}
-                    {item.book.number && <> - {item.book.number}</>}
+                    {item.title}
+                    {item.number && <> - {item.number}</>}
                   </h2>
 
                   <h4 className="text-sm text-gray-700 dark:text-gray-400">
-                    {item.authors.map((a) => a.name).join(", ")}
+                    {item.authors.join(", ")}
                   </h4>
-                  {item.book.publisher && (
+                  {item.publisher && (
                     <p className="mt-1 text-[12px] text-gray-600 dark:text-gray-500 leading-tight">
-                      {item.book.publisher}
+                      {item.publisher}
                     </p>
                   )}
                 </div>

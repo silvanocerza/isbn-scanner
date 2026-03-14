@@ -2,12 +2,12 @@ import { cn, getColorForGroup } from "../utils";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { X, Save, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
-import { BookWithThumbnail } from "../types";
+import { Book } from "../types";
 
 export interface DetailsDialogProps {
   open: boolean;
   onClose: () => void;
-  initial: BookWithThumbnail;
+  initial: Book;
   editMode?: boolean;
   onNext?: () => void;
   onPrev?: () => void;
@@ -41,30 +41,30 @@ export function DetailsDialog({
   const customFieldInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
-    title: initial.book.title,
-    number: initial.book.number,
-    publisher: initial.book.publisher ?? "",
-    published_date: initial.book.published_date ?? "",
-    description: initial.book.description ?? "",
-    page_count: initial.book.page_count,
-    language: initial.book.language ?? "",
-    authors: initial.authors.map((a) => a.name.trim()).join(", "),
-    groups: initial.book.groups.join(", "),
-    custom_fields: { ...initial.book.custom_fields },
+    title: initial.title,
+    number: initial.number,
+    publisher: initial.publisher ?? "",
+    published_date: initial.published_date ?? "",
+    description: initial.description ?? "",
+    page_count: initial.page_count,
+    language: initial.language ?? "",
+    authors: initial.authors.map((a) => a.trim()).join(", "),
+    groups: initial.groups.join(", "),
+    custom_fields: { ...initial.custom_fields },
   });
 
   useEffect(() => {
     setForm({
-      title: initial.book.title,
-      number: initial.book.number,
-      publisher: initial.book.publisher ?? "",
-      published_date: initial.book.published_date ?? "",
-      description: initial.book.description ?? "",
-      page_count: initial.book.page_count,
-      language: initial.book.language ?? "",
-      authors: initial.authors.map((a) => a.name.trim()).join(", "),
-      groups: initial.book.groups.join(", "),
-      custom_fields: { ...initial.book.custom_fields },
+      title: initial.title,
+      number: initial.number,
+      publisher: initial.publisher ?? "",
+      published_date: initial.published_date ?? "",
+      description: initial.description ?? "",
+      page_count: initial.page_count,
+      language: initial.language ?? "",
+      authors: initial.authors.map((a) => a.trim()).join(", "),
+      groups: initial.groups.join(", "),
+      custom_fields: { ...initial.custom_fields },
     });
     setGroupInput("");
     setGroupSelectedIndex(-1);
@@ -82,8 +82,8 @@ export function DetailsDialog({
   );
 
   const allKnownGroups = useMemo(
-    () => Array.from(new Set([...knownGroups, ...initial.book.groups])),
-    [knownGroups, initial.book.groups],
+    () => Array.from(new Set([...knownGroups, ...initial.groups])),
+    [knownGroups, initial.groups],
   );
 
   const filteredGroupSuggestions = useMemo(
@@ -107,10 +107,10 @@ export function DetailsDialog({
       Array.from(
         new Set([
           ...knownCustomFields,
-          ...Object.keys(initial.book.custom_fields),
+          ...Object.keys(initial.custom_fields),
         ]),
       ),
-    [knownCustomFields, initial.book.custom_fields],
+    [knownCustomFields, initial.custom_fields],
   );
 
   const filteredCustomFieldSuggestions = useMemo(
@@ -231,7 +231,7 @@ export function DetailsDialog({
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
-    const origAuthors = initial.authors.map((a) => a.name.trim());
+    const origAuthors = initial.authors.map((a) => a.trim());
     const eqAuthors =
       authorsArr.length === origAuthors.length &&
       authorsArr.every((a, i) => a === origAuthors[i]);
@@ -240,12 +240,12 @@ export function DetailsDialog({
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
-    const origGroups = initial.book.groups;
+    const origGroups = initial.groups;
     const eqGroups =
       groupsArr.length === origGroups.length &&
       groupsArr.every((g, i) => g === origGroups[i]);
 
-    const origCustomFields = initial.book.custom_fields;
+    const origCustomFields = initial.custom_fields;
     const eqCustomFields =
       Object.keys(form.custom_fields).length ===
         Object.keys(origCustomFields).length &&
@@ -254,13 +254,13 @@ export function DetailsDialog({
       );
 
     return !(
-      form.title === initial.book.title &&
-      form.number === initial.book.number &&
-      (form.publisher || "") === (initial.book.publisher || "") &&
-      (form.published_date || "") === (initial.book.published_date || "") &&
-      (form.description || "") === (initial.book.description || "") &&
-      form.page_count === initial.book.page_count &&
-      (form.language || "") === (initial.book.language || "") &&
+      form.title === initial.title &&
+      form.number === initial.number &&
+      (form.publisher || "") === (initial.publisher || "") &&
+      (form.published_date || "") === (initial.published_date || "") &&
+      (form.description || "") === (initial.description || "") &&
+      form.page_count === initial.page_count &&
+      (form.language || "") === (initial.language || "") &&
       eqAuthors &&
       eqGroups &&
       eqCustomFields
@@ -296,7 +296,7 @@ export function DetailsDialog({
         .filter(Boolean);
       await invoke("update_book", {
         payload: {
-          volume_id: initial.book.volume_id,
+          volume_id: initial.volume_id,
           title: form.title,
           number: form.number,
           publisher: form.publisher || null,
@@ -358,7 +358,7 @@ export function DetailsDialog({
                 {form.authors}
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                {initial.book.volume_id.slice(0, 12)} ·{" "}
+                {initial.volume_id.slice(0, 12)} ·{" "}
                 {initial.isbns.join(", ")} ·{" "}
                 {form.language || "Unknown language"}
               </p>
@@ -380,7 +380,7 @@ export function DetailsDialog({
                 {initial.thumbnail ? (
                   <img
                     src={initial.thumbnail}
-                    alt={initial.book.title}
+                    alt={initial.title}
                     className="h-full w-full object-cover"
                   />
                 ) : (
@@ -391,15 +391,15 @@ export function DetailsDialog({
               </div>
               <div className="flex-1 rounded-xl bg-linear-to-br from-blue-50 dark:from-blue-900/20 to-indigo-50 dark:to-indigo-900/20 p-4 text-sm ring-1 ring-blue-100 dark:ring-blue-500/20 shadow-sm">
                 <div className="space-y-2.5">
-                  <InfoRow label="Pages" value={initial.book.page_count} />
+                  <InfoRow label="Pages" value={initial.page_count} />
                   <div className="h-px bg-blue-100/50 dark:bg-blue-500/20" />
-                  <InfoRow label="Publisher" value={initial.book.publisher} />
+                  <InfoRow label="Publisher" value={initial.publisher} />
                   <div className="h-px bg-blue-100/50 dark:bg-blue-500/20" />
-                  <InfoRow label="Year" value={initial.book.published_date} />
+                  <InfoRow label="Year" value={initial.published_date} />
                   <div className="h-px bg-blue-100/50 dark:bg-blue-500/20" />
-                  <InfoRow label="Print Type" value={initial.book.print_type} />
+                  <InfoRow label="Print Type" value={initial.print_type} />
                   <div className="h-px bg-blue-100/50 dark:bg-blue-500/20" />
-                  <InfoRow label="Language" value={initial.book.language} />
+                  <InfoRow label="Language" value={initial.language} />
                 </div>
               </div>
             </div>
@@ -649,13 +649,13 @@ export function DetailsDialog({
                 <div className="grid grid-cols-2 gap-4">
                   <Field
                     label="Print Type"
-                    value={initial.book.print_type ?? ""}
+                    value={initial.print_type ?? ""}
                     onChange={() => {}}
                     disabled
                   />
                   <Field
                     label="Maturity Rating"
-                    value={initial.book.maturity_rating ?? ""}
+                    value={initial.maturity_rating ?? ""}
                     onChange={() => {}}
                     disabled
                   />
@@ -663,13 +663,13 @@ export function DetailsDialog({
                 <div className="grid grid-cols-2 gap-4">
                   <Field
                     label="Country"
-                    value={initial.book.country ?? ""}
+                    value={initial.country ?? ""}
                     onChange={() => {}}
                     disabled
                   />
                   <Field
                     label="Saleability"
-                    value={initial.book.saleability ?? ""}
+                    value={initial.saleability ?? ""}
                     onChange={() => {}}
                     disabled
                   />
@@ -677,39 +677,39 @@ export function DetailsDialog({
                 <div className="grid grid-cols-2 gap-4">
                   <Field
                     label="Viewability"
-                    value={initial.book.viewability ?? ""}
+                    value={initial.viewability ?? ""}
                     onChange={() => {}}
                     disabled
                   />
                   <Field
                     label="Text to Speech"
-                    value={initial.book.text_to_speech_permission ?? ""}
+                    value={initial.text_to_speech_permission ?? ""}
                     onChange={() => {}}
                     disabled
                   />
                 </div>
                 <Field
                   label="Access View Status"
-                  value={initial.book.access_view_status ?? ""}
+                  value={initial.access_view_status ?? ""}
                   onChange={() => {}}
                   disabled
                 />
                 <div className="grid grid-cols-3 gap-4">
                   <Field
                     label="Is Ebook"
-                    value={initial.book.is_ebook ? "Yes" : "No"}
+                    value={initial.is_ebook ? "Yes" : "No"}
                     onChange={() => {}}
                     disabled
                   />
                   <Field
                     label="Public Domain"
-                    value={initial.book.public_domain ? "Yes" : "No"}
+                    value={initial.public_domain ? "Yes" : "No"}
                     onChange={() => {}}
                     disabled
                   />
                   <Field
                     label="Embeddable"
-                    value={initial.book.embeddable ? "Yes" : "No"}
+                    value={initial.embeddable ? "Yes" : "No"}
                     onChange={() => {}}
                     disabled
                   />
@@ -717,19 +717,19 @@ export function DetailsDialog({
                 <div className="grid grid-cols-3 gap-4">
                   <Field
                     label="EPUB Available"
-                    value={initial.book.epub_available ? "Yes" : "No"}
+                    value={initial.epub_available ? "Yes" : "No"}
                     onChange={() => {}}
                     disabled
                   />
                   <Field
                     label="PDF Available"
-                    value={initial.book.pdf_available ? "Yes" : "No"}
+                    value={initial.pdf_available ? "Yes" : "No"}
                     onChange={() => {}}
                     disabled
                   />
                   <Field
                     label="Quote Sharing"
-                    value={initial.book.quote_sharing_allowed ? "Yes" : "No"}
+                    value={initial.quote_sharing_allowed ? "Yes" : "No"}
                     onChange={() => {}}
                     disabled
                   />
@@ -737,22 +737,22 @@ export function DetailsDialog({
 
                 <ViewField
                   label="Preview Link"
-                  value={initial.book.preview_link}
+                  value={initial.preview_link}
                   isLink
                 />
                 <ViewField
                   label="Info Link"
-                  value={initial.book.info_link}
+                  value={initial.info_link}
                   isLink
                 />
                 <ViewField
                   label="Canonical Link"
-                  value={initial.book.canonical_link}
+                  value={initial.canonical_link}
                   isLink
                 />
                 <ViewField
                   label="Web Reader Link"
-                  value={initial.book.web_reader_link}
+                  value={initial.web_reader_link}
                   isLink
                 />
               </div>
@@ -772,8 +772,8 @@ export function DetailsDialog({
                     Groups
                   </h3>
                   <div className="flex flex-wrap gap-2">
-                    {initial.book.groups.length > 0 ? (
-                      initial.book.groups.map((group) => (
+                    {initial.groups.length > 0 ? (
+                      initial.groups.map((group) => (
                         <span
                           key={group}
                           className={cn(
@@ -792,13 +792,13 @@ export function DetailsDialog({
                     )}
                   </div>
                 </div>
-                {Object.keys(initial.book.custom_fields).length > 0 && (
+                {Object.keys(initial.custom_fields).length > 0 && (
                   <div>
                     <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                       Custom Fields
                     </h3>
                     <div className="space-y-2">
-                      {Object.entries(initial.book.custom_fields).map(
+                      {Object.entries(initial.custom_fields).map(
                         ([fieldName, value]) => (
                           <div
                             key={fieldName}
@@ -828,78 +828,78 @@ export function DetailsDialog({
                 <div className="grid grid-cols-2 gap-4">
                   <ViewField
                     label="Print Type"
-                    value={initial.book.print_type}
+                    value={initial.print_type}
                   />
                   <ViewField
                     label="Maturity Rating"
-                    value={initial.book.maturity_rating}
+                    value={initial.maturity_rating}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <ViewField label="Country" value={initial.book.country} />
+                  <ViewField label="Country" value={initial.country} />
                   <ViewField
                     label="Saleability"
-                    value={initial.book.saleability}
+                    value={initial.saleability}
                   />
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <ViewField
                     label="Is Ebook"
-                    value={initial.book.is_ebook ? "Yes" : "No"}
+                    value={initial.is_ebook ? "Yes" : "No"}
                   />
                   <ViewField
                     label="Public Domain"
-                    value={initial.book.public_domain ? "Yes" : "No"}
+                    value={initial.public_domain ? "Yes" : "No"}
                   />
                   <ViewField
                     label="Embeddable"
-                    value={initial.book.embeddable ? "Yes" : "No"}
+                    value={initial.embeddable ? "Yes" : "No"}
                   />
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <ViewField
                     label="EPUB Available"
-                    value={initial.book.epub_available ? "Yes" : "No"}
+                    value={initial.epub_available ? "Yes" : "No"}
                   />
                   <ViewField
                     label="PDF Available"
-                    value={initial.book.pdf_available ? "Yes" : "No"}
+                    value={initial.pdf_available ? "Yes" : "No"}
                   />
                   <ViewField
                     label="Quote Sharing Allowed"
-                    value={initial.book.quote_sharing_allowed ? "Yes" : "No"}
+                    value={initial.quote_sharing_allowed ? "Yes" : "No"}
                   />
                 </div>
                 <ViewField
                   label="Text to Speech"
-                  value={initial.book.text_to_speech_permission}
+                  value={initial.text_to_speech_permission}
                 />
                 <ViewField
                   label="Viewability"
-                  value={initial.book.viewability}
+                  value={initial.viewability}
                 />
                 <ViewField
                   label="Access View Status"
-                  value={initial.book.access_view_status}
+                  value={initial.access_view_status}
                 />
                 <ViewField
                   label="Preview Link"
-                  value={initial.book.preview_link}
+                  value={initial.preview_link}
                   isLink
                 />
                 <ViewField
                   label="Info Link"
-                  value={initial.book.info_link}
+                  value={initial.info_link}
                   isLink
                 />
                 <ViewField
                   label="Canonical Link"
-                  value={initial.book.canonical_link}
+                  value={initial.canonical_link}
                   isLink
                 />
                 <ViewField
                   label="Web Reader Link"
-                  value={initial.book.web_reader_link}
+                  value={initial.web_reader_link}
                   isLink
                 />
               </div>

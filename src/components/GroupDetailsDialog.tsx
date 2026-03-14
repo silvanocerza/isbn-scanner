@@ -1,13 +1,13 @@
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X } from "lucide-react";
 import { GroupedBooks } from "./BookGrid";
-import { BookWithThumbnail } from "../types";
+import { Book } from "../types";
 import { formatNumberRanges } from "../utils";
 
 export interface GroupDetailsDialogProps {
   open: boolean;
   onClose: () => void;
   group: GroupedBooks | null;
-  onSelectBook?: (book: BookWithThumbnail) => void;
+  onSelectBook?: (book: Book) => void;
 }
 
 export function GroupDetailsDialog({
@@ -54,7 +54,7 @@ export function GroupDetailsDialog({
           <div className="flex flex-wrap gap-4 justify-start">
             {group.books.map((book) => (
               <div
-                key={book.book.volume_id}
+                key={book.volume_id}
                 className="w-[140px]"
                 onClick={() => {
                   if (onSelectBook) {
@@ -67,7 +67,7 @@ export function GroupDetailsDialog({
                     {book.thumbnail ? (
                       <img
                         src={book.thumbnail}
-                        alt={book.book.title}
+                        alt={book.title}
                         loading="lazy"
                         className="absolute inset-0 h-full w-full object-cover"
                       />
@@ -80,13 +80,13 @@ export function GroupDetailsDialog({
                 </div>
                 <div className="py-3 px-1">
                   <h3 className="font-semibold text-sm text-gray-900 dark:text-white truncate">
-                    {book.book.title}
-                    {book.book.number !== undefined && (
-                      <span> - {book.book.number}</span>
+                    {book.title}
+                    {book.number !== undefined && (
+                      <span> - {book.number}</span>
                     )}
                   </h3>
                   <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                    {book.authors.map((a) => a.name).join(", ")}
+                    {book.authors.join(", ")}
                   </p>
                 </div>
               </div>

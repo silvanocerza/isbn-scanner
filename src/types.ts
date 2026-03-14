@@ -3,8 +3,6 @@ export interface Book {
   title: string;
   number?: number;
   publisher?: string;
-  authors?: string[];
-  year?: string;
   published_date?: string | null;
   description?: string | null;
   page_count?: number;
@@ -26,16 +24,9 @@ export interface Book {
   web_reader_link?: string | null;
   access_view_status?: string | null;
   quote_sharing_allowed?: boolean | null;
+  authors: string[];
   groups: string[];
-  custom_fields: Record<string, string>;
-}
-
-export interface BookWithThumbnail {
-  book: Book;
-  authors: { name: string }[];
   isbns: string[];
-  // This can either be the path to the thumbnail file or the object URL
-  // of the blob for this book.
-  // If it's an empty string or not set the book doesn't have an thumbnail.
+  custom_fields: Record<string, string>;
   thumbnail?: string;
 }

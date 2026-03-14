@@ -37,22 +37,18 @@ pub struct Book {
     pub access_view_status: Option<String>,
     pub quote_sharing_allowed: Option<i64>,
     #[sqlx(skip)]
+    pub authors: Vec<String>,
+    #[sqlx(skip)]
     pub groups: Vec<String>,
+    #[sqlx(skip)]
+    pub isbns: Vec<String>,
     #[sqlx(skip)]
     pub custom_fields: HashMap<String, String>,
 }
 
 #[derive(Debug, Serialize, FromRow)]
-pub struct Author {
-    pub name: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct BookWithThumbnail {
-    pub book: Book,
-    pub authors: Vec<Author>,
-    pub isbns: Vec<String>,
-    pub thumbnail: Option<String>,
+struct Author {
+    name: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -147,7 +143,7 @@ async fn load_custom_fields_for_book(
 pub async fn fetch_all_books(
     pool: &tauri_plugin_sql::DbPool,
     app_handle: &tauri::AppHandle,
-) -> anyhow::Result<Vec<BookWithThumbnail>> {
+) -> anyhow::Result<Vec<Book>> {
     let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
     let books = sqlx::query_as::<_, Book>(
         r#"
@@ -170,7 +166,7 @@ pub async fn fetch_all_books(
 
     let mut result = Vec::new();
     for mut book in books {
-        let authors = sqlx::query_as::<_, Author>(
+        let author_rows = sqlx::query_as::<_, Author>(
             r#"
             SELECT a.name
             FROM authors a
@@ -182,6 +178,7 @@ pub async fn fetch_all_books(
         .bind(&book.volume_id)
         .fetch_all(sqlite_pool)
         .await?;
+        book.authors = author_rows.into_iter().map(|a| a.name).collect();
 
         let groups = sqlx::query_scalar::<_, String>(
             r#"
@@ -195,8 +192,7 @@ pub async fn fetch_all_books(
         .bind(&book.volume_id)
         .fetch_all(sqlite_pool)
         .await?;
-
-        let custom_fields = load_custom_fields_for_book(sqlite_pool, &book.volume_id).await?;
+        book.groups = groups;
 
         let isbns = sqlx::query_scalar::<_, String>(
             r#"
@@ -209,23 +205,19 @@ pub async fn fetch_all_books(
         .bind(&book.volume_id)
         .fetch_all(sqlite_pool)
         .await?;
+        book.isbns = isbns;
+
+        let custom_fields = load_custom_fields_for_book(sqlite_pool, &book.volume_id).await?;
+        book.custom_fields = custom_fields;
 
         let thumbnail_path = books_dir.join(format!("{}.jpg", book.volume_id));
-        let thumbnail = if thumbnail_path.exists() {
+        book.thumbnail = if thumbnail_path.exists() {
             Some(thumbnail_path.to_string_lossy().to_string())
         } else {
             None
         };
 
-        book.groups = groups;
-        book.custom_fields = custom_fields;
-
-        result.push(BookWithThumbnail {
-            book,
-            authors,
-            isbns,
-            thumbnail,
-        });
+        result.push(book);
     }
 
     Ok(result)
@@ -235,7 +227,7 @@ pub async fn get_book(
     pool: &tauri_plugin_sql::DbPool,
     app_handle: &tauri::AppHandle,
     volume_id: &str,
-) -> anyhow::Result<BookWithThumbnail> {
+) -> anyhow::Result<Book> {
     let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
     let mut book = sqlx::query_as::<_, Book>(
         r#"
@@ -255,7 +247,7 @@ pub async fn get_book(
     .fetch_one(sqlite_pool)
     .await?;
 
-    let authors = sqlx::query_as::<_, Author>(
+    let author_rows = sqlx::query_as::<_, Author>(
         r#"
         SELECT a.name
         FROM authors a
@@ -267,6 +259,7 @@ pub async fn get_book(
     .bind(volume_id)
     .fetch_all(sqlite_pool)
     .await?;
+    book.authors = author_rows.into_iter().map(|a| a.name).collect();
 
     let groups = sqlx::query_scalar::<_, String>(
         r#"
@@ -280,8 +273,10 @@ pub async fn get_book(
     .bind(volume_id)
     .fetch_all(sqlite_pool)
     .await?;
+    book.groups = groups;
 
     let custom_fields = load_custom_fields_for_book(sqlite_pool, volume_id).await?;
+    book.custom_fields = custom_fields;
 
     let isbns = sqlx::query_scalar::<_, String>(
         r#"
@@ -294,25 +289,18 @@ pub async fn get_book(
     .bind(volume_id)
     .fetch_all(sqlite_pool)
     .await?;
+    book.isbns = isbns;
 
     let app_data_dir = app_handle.path().app_data_dir()?;
     let books_dir = app_data_dir.join("books");
     let thumbnail_path = books_dir.join(format!("{}.jpg", book.volume_id));
-    let thumbnail = if thumbnail_path.exists() {
+    book.thumbnail = if thumbnail_path.exists() {
         Some(thumbnail_path.to_string_lossy().to_string())
     } else {
         None
     };
 
-    book.groups = groups;
-    book.custom_fields = custom_fields;
-
-    Ok(BookWithThumbnail {
-        book,
-        authors,
-        isbns,
-        thumbnail,
-    })
+    Ok(book)
 }
 
 pub async fn find_books_containing_title(
@@ -339,6 +327,20 @@ pub async fn find_books_containing_title(
     .await?;
 
     for book in &mut books {
+        let author_rows = sqlx::query_as::<_, Author>(
+            r#"
+            SELECT a.name
+            FROM authors a
+            JOIN book_authors ba ON a.author_id = ba.author_id
+            WHERE ba.volume_id = ?
+            ORDER BY ba.position
+            "#,
+        )
+        .bind(&book.volume_id)
+        .fetch_all(sqlite_pool)
+        .await?;
+        book.authors = author_rows.into_iter().map(|a| a.name).collect();
+
         let groups = sqlx::query_scalar::<_, String>(
             r#"
             SELECT g.name
@@ -351,11 +353,23 @@ pub async fn find_books_containing_title(
         .bind(&book.volume_id)
         .fetch_all(sqlite_pool)
         .await?;
+        book.groups = groups;
 
         let custom_fields = load_custom_fields_for_book(sqlite_pool, &book.volume_id).await?;
-
-        book.groups = groups;
         book.custom_fields = custom_fields;
+
+        let isbns = sqlx::query_scalar::<_, String>(
+            r#"
+            SELECT identifier
+            FROM book_identifiers
+            WHERE volume_id = ?
+            ORDER BY type DESC
+            "#,
+        )
+        .bind(&book.volume_id)
+        .fetch_all(sqlite_pool)
+        .await?;
+        book.isbns = isbns;
     }
 
     Ok(books)

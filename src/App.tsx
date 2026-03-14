@@ -26,7 +26,7 @@ import { loadSettings } from "./lib/store";
 import { BookNumberDialog } from "./components/BookNumberDialog";
 import { emit, listen } from "@tauri-apps/api/event";
 import { readFile } from "@tauri-apps/plugin-fs";
-import { Book, BookWithThumbnail } from "./types";
+import { Book } from "./types";
 import { GroupingDialog } from "./components/GroupingDialog";
 import { GroupDetailsDialog } from "./components/GroupDetailsDialog";
 import { SearchBox } from "./components/SearchBox";
@@ -37,12 +37,12 @@ type Theme = "light" | "dark" | "system";
 function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [manualIdentifier, setManualIdentifier] = useState("");
-  const [books, setBooks] = useState<BookWithThumbnail[]>([]);
+  const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [editMode, setEditMode] = useState(false);
-  const [selectedBook, setSelectedBook] = useState<BookWithThumbnail | null>(
+  const [selectedBook, setSelectedBook] = useState<Book | null>(
     null,
   );
   const [bookWithoutNumber, setBookWithoutNumber] = useState<Book | undefined>(
@@ -70,7 +70,7 @@ function App() {
   const loadBooks = async () => {
     try {
       setLoading(true);
-      const result = await invoke<BookWithThumbnail[]>("get_all_books");
+      const result = await invoke<Book[]>("get_all_books");
       const books = await Promise.all(
         result.map(async (item) => {
           if (!item.thumbnail) {
@@ -84,7 +84,7 @@ function App() {
           } catch (err) {
             item.thumbnail = undefined;
             console.error(
-              `Failed to load image for ${item.book.volume_id}`,
+              `Failed to load image for ${item.volume_id}`,
               err,
             );
           }
@@ -103,7 +103,7 @@ function App() {
   const reloadBooks = async () => {
     const scrollTop = scrollRef.current?.scrollTop ?? 0;
     try {
-      const result = await invoke<BookWithThumbnail[]>("get_all_books");
+      const result = await invoke<Book[]>("get_all_books");
       const books = await Promise.all(
         result.map(async (item) => {
           if (!item.thumbnail) {
@@ -117,7 +117,7 @@ function App() {
           } catch (err) {
             item.thumbnail = undefined;
             console.error(
-              `Failed to load image for ${item.book.volume_id}`,
+              `Failed to load image for ${item.volume_id}`,
               err,
             );
           }
@@ -196,7 +196,7 @@ function App() {
     }
   };
 
-  const handleSelect = (b: BookWithThumbnail) => {
+  const handleSelect = (b: Book) => {
     setSelectedBook(b);
     setSelectedGroup(null);
     setDetailsOpen(true);
@@ -208,7 +208,7 @@ function App() {
     setGroupDetailsOpen(true);
   };
 
-  const handleSelectBookFromGroup = (book: BookWithThumbnail) => {
+  const handleSelectBookFromGroup = (book: Book) => {
     setSelectedBook(book);
     setGroupDetailsOpen(false);
     setDetailsOpen(true);
@@ -218,20 +218,20 @@ function App() {
     localStorage.setItem("groupByTitle", String(groupByTitle));
   }, [groupByTitle]);
 
-  const handleBookSaved = async (book: BookWithThumbnail) => {
+  const handleBookSaved = async (book: Book) => {
     const result = await invoke<string>("set_book_groups", {
-      volumeId: book.book.volume_id,
+      volumeId: book.volume_id,
       groups: groups,
     });
     console.log(result);
 
-    console.log("Success:", book.book.volume_id);
+    console.log("Success:", book.volume_id);
     const settings = await loadSettings();
     if (settings.successSound) {
       new Audio("/success.mp3").play();
     }
     emit("book-updated");
-    toast.success(`Added ${book.book.title}`);
+    toast.success(`Added ${book.title}`);
   };
 
   const handleNewEAN = async (ean: string) => {
@@ -293,7 +293,7 @@ function App() {
         });
         if (exists) return;
 
-        const book = await invoke<BookWithThumbnail>("fetch_isbn", {
+        const book = await invoke<Book>("fetch_isbn", {
           isbn: text,
         });
         await handleBookSaved(book);
@@ -439,21 +439,21 @@ function App() {
     const query = searchQuery.toLowerCase();
 
     // First filter by search query if present
-    const customValues = Object.values(book.book.custom_fields);
+    const customValues = Object.values(book.custom_fields);
     const matchesSearch =
       !query ||
-      book.book.title.toLowerCase().includes(query) ||
+      book.title.toLowerCase().includes(query) ||
       book.authors.some((author) =>
-        author.name.toLowerCase().includes(query),
+        author.toLowerCase().includes(query),
       ) ||
-      book.book.publisher?.toLowerCase().includes(query) ||
+      book.publisher?.toLowerCase().includes(query) ||
       customValues.some((v) => v.toLowerCase().includes(query)) ||
-      book.book.groups.some((group) => group.toLowerCase().includes(query));
+      book.groups.some((group) => group.toLowerCase().includes(query));
 
     // Then filter by selected groups if any
     const matchesGroup =
       groups.length === 0 ||
-      book.book.groups.some((group) => groups.includes(group));
+      book.groups.some((group) => groups.includes(group));
 
     return matchesSearch && matchesGroup;
   });
@@ -590,7 +590,7 @@ function App() {
             if (!selectedBook) return;
             try {
               await invoke("delete_book", {
-                volumeId: selectedBook.book.volume_id,
+                volumeId: selectedBook.volume_id,
               });
               setDetailsOpen(false);
               reloadBooks();
