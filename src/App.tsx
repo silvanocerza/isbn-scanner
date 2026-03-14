@@ -21,7 +21,7 @@ import { Toaster, toast } from "sonner";
 import { AddBookDialog } from "./components/AddBookDialog";
 import { invoke } from "@tauri-apps/api/core";
 import { DetailsDialog } from "./components/DetailsDialog";
-import { cn, getColorForGroup } from "./utils";
+import { cn, getColorForGroup, isISBN, isEAN13, isOnlyDigits } from "./utils";
 import { loadSettings } from "./lib/store";
 import { BookNumberDialog } from "./components/BookNumberDialog";
 import { emit, listen } from "@tauri-apps/api/event";
@@ -30,11 +30,13 @@ import { Book, BookWithThumbnail } from "./types";
 import { GroupingDialog } from "./components/GroupingDialog";
 import { GroupDetailsDialog } from "./components/GroupDetailsDialog";
 import { SearchBox } from "./components/SearchBox";
+import { IdentifierBox } from "./components/IdentifierBox";
 
 type Theme = "light" | "dark" | "system";
 
 function App() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [manualIdentifier, setManualIdentifier] = useState("");
   const [books, setBooks] = useState<BookWithThumbnail[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -271,6 +273,46 @@ function App() {
     });
   };
 
+  const handleManualIdentifier = async (text: string) => {
+    await handleScan(text);
+  };
+
+  const handleScan = async (text: string) => {
+    const digits = text.replace(/\D/g, "");
+
+    const isISBNFormat =
+      isISBN(text) &&
+      (digits.length === 10 ||
+        digits.startsWith("978") ||
+        digits.startsWith("979"));
+
+    if (isISBNFormat) {
+      try {
+        const exists = await invoke<boolean>("isbn_exists", {
+          isbn: text,
+        });
+        if (exists) return;
+
+        const result = await invoke<string>("fetch_isbn", { isbn: text });
+        await handleBookSaved(result);
+      } catch (error) {
+        console.log(error);
+        handleClipboardError(text, String(error));
+      }
+    } else if (isEAN13(text)) {
+      const book = await invoke<Book | null>("find_comic_by_ean", {
+        ean: text,
+      });
+      if (book) {
+        handleExistingEAN(book);
+      } else {
+        handleNewEAN(text);
+      }
+    } else if (isOnlyDigits(text)) {
+      toast.error("Unknown barcode format");
+    }
+  };
+
   const openAddDialog = () => {
     setAddOpen(!addOpen);
   };
@@ -417,12 +459,7 @@ function App() {
   return (
     <div className="h-screen w-screen flex flex-col">
       <Toaster richColors />
-      <KeypressListener
-        onBookSaved={handleBookSaved}
-        onNewEAN={handleNewEAN}
-        onExistingEAN={handleExistingEAN}
-        onError={handleClipboardError}
-      />
+      <KeypressListener onScan={handleScan} />
 
       <div className="fixed top-0 left-0 right-0 z-20 bg-transparent pointer-events-none select-none">
         <div className="flex justify-center">
@@ -435,6 +472,15 @@ function App() {
                   onChange={setSearchQuery}
                   placeholder="Search"
                   className="flex-1 max-w-2xl"
+                />
+                <IdentifierBox
+                  value={manualIdentifier}
+                  onChange={setManualIdentifier}
+                  onSubmit={async (value) => {
+                    await handleManualIdentifier(value);
+                    setManualIdentifier("");
+                  }}
+                  placeholder="ISBN / ISSN"
                 />
                 <span
                   className="text-md

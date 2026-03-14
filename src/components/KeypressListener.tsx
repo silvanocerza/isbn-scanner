@@ -1,25 +1,16 @@
 import { useEffect, useRef } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { isEAN13, isISBN, isOnlyDigits } from "../utils";
-import { toast } from "sonner";
-import { Book } from "../types";
 
 interface KeypressListenerProps {
-  onBookSaved?: (message: string) => void;
-  onNewEAN?: (ean: string) => void;
-  onExistingEAN?: (book: Book) => void;
-  onError?: (identifier: string, message: string) => void;
+  onScan?: (text: string) => Promise<void>;
 }
 
 export function KeypressListener({
-  onBookSaved,
-  onNewEAN,
-  onExistingEAN,
-  onError,
+  onScan,
 }: KeypressListenerProps) {
   // Buffer for the current scan
   const bufferRef = useRef<string>("");
-  // Timestamp of last key, used to decide whether we’re in a “burst”
+  // Timestamp of last key, used to decide whether we're in a "burst"
   const lastKeyTimeRef = useRef<number>(0);
 
   // Tuning parameters
@@ -55,32 +46,8 @@ export function KeypressListener({
               digits.startsWith("978") ||
               digits.startsWith("979"));
 
-          if (isISBNFormat) {
-            // Handle as ISBN - fetch from Google Books
-            try {
-              const exists = await invoke<boolean>("isbn_exists", {
-                isbn: text,
-              });
-              if (exists) return;
-
-              const result = await invoke<string>("fetch_isbn", { isbn: text });
-              onBookSaved?.(result);
-            } catch (error) {
-              console.log(error);
-              onError?.(text, String(error));
-            }
-          } else if (isEAN13(text)) {
-            // Handle as non-ISBN EAN-13 (periodicals/comics)
-            const book = await invoke<Book | null>("find_comic_by_ean", {
-              ean: text,
-            });
-            if (book) {
-              onExistingEAN?.(book);
-            } else {
-              onNewEAN?.(text);
-            }
-          } else if (isOnlyDigits(text)) {
-            toast.error("Unknown barcode format");
+          if (isISBNFormat || isEAN13(text) || isOnlyDigits(text)) {
+            await onScan?.(text);
           }
         } catch (err) {
           console.error("Scan handling error:", err);
@@ -104,18 +71,13 @@ export function KeypressListener({
           // Safety: if exceeded, reset to avoid accidental long logs
           bufferRef.current = "";
         }
-        // Prevent typing into focused inputs if desired:
-        // e.preventDefault();
-      } else {
-        // If it’s any other key during a fast burst, ignore but don’t reset.
-        // For normal human typing, the delay will reset the buffer anyway.
       }
     };
 
     window.addEventListener("keydown", handleKeydown, { capture: true });
     return () =>
       window.removeEventListener("keydown", handleKeydown, { capture: true });
-  }, [onBookSaved, onError]);
+  }, [onScan]);
 
   return null;
 }
