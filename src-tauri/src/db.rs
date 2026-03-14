@@ -1201,6 +1201,32 @@ pub async fn clone_book_with_number(
     .execute(&mut *tx)
     .await?;
 
+    // The volume_id we receive here was already cloned by another function.
+    // I don't feel like fixing that as of now cause it would complicate things
+    // a bit and I just things to work, even if a bit janky.
+    //
+    // So here, after we cloned all the other numbers we delete the original clone.
+    // We'll get around to fix this.
+    sqlx::query("DELETE FROM book_authors WHERE volume_id = ?")
+        .bind(volume_id)
+        .execute(&mut *tx)
+        .await?;
+
+    sqlx::query("DELETE FROM book_groups WHERE volume_id = ?")
+        .bind(volume_id)
+        .execute(&mut *tx)
+        .await?;
+
+    sqlx::query("DELETE FROM book_custom_fields WHERE volume_id = ?")
+        .bind(volume_id)
+        .execute(&mut *tx)
+        .await?;
+
+    sqlx::query("DELETE FROM books WHERE volume_id = ?")
+        .bind(volume_id)
+        .execute(&mut *tx)
+        .await?;
+
     tx.commit().await?;
     Ok(new_volume_id)
 }
