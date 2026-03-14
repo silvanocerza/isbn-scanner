@@ -1286,3 +1286,156 @@ pub async fn set_book_groups(
     tx.commit().await?;
     Ok(())
 }
+
+pub async fn import_books_from_csv(
+    pool: &tauri_plugin_sql::DbPool,
+    csv_path: &std::path::Path,
+    app_handle: &tauri::AppHandle,
+) -> anyhow::Result<usize> {
+    let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
+
+    let file = std::fs::File::open(csv_path)?;
+    let mut rdr = csv::Reader::from_reader(file);
+
+    let headers = rdr.headers()?.clone();
+    let mut count = 0;
+
+    let csv_parent = csv_path.parent().unwrap_or(std::path::Path::new("."));
+    let images_dir = csv_parent.join("images");
+
+    let app_data_dir = app_handle.path().app_data_dir()?;
+    let books_dir = app_data_dir.join("books");
+    std::fs::create_dir_all(&books_dir)?;
+
+    for result in rdr.records() {
+        let record = result?;
+
+        let get_field = |name: &str| -> Option<String> {
+            headers.iter().position(|h| h == name).and_then(|i| record.get(i).map(|s| s.to_string()))
+        };
+
+        let title = get_field("title").unwrap_or_default();
+        if title.is_empty() {
+            continue;
+        }
+
+        let series = get_field("series");
+        let number: Option<i64> = get_field("number").and_then(|n| n.parse().ok());
+        let publisher = get_field("publisher");
+        let published_date = get_field("published_date");
+        let description = get_field("description");
+        let page_count: Option<i64> = get_field("page_count").and_then(|n| n.parse().ok());
+        let language = get_field("language");
+
+        let authors: Vec<String> = get_field("authors")
+            .map(|s| s.split("; ").map(|a| a.to_string()).collect())
+            .unwrap_or_default();
+
+        let groups: Vec<String> = get_field("groups")
+            .map(|s| s.split("; ").map(|g| g.to_string()).collect())
+            .unwrap_or_default();
+
+        let identifiers: Vec<(String, String)> = get_field("identifiers")
+            .map(|s| {
+                s.split("; ")
+                    .filter_map(|id| {
+                        let parts: Vec<&str> = id.split(':').collect();
+                        if parts.len() == 2 {
+                            Some((parts[0].to_string(), parts[1].to_string()))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let volume_id = Uuid::new_v4().to_string();
+
+        sqlx::query(
+            r#"
+            INSERT INTO books (
+                volume_id, title, series, number, publisher, published_date,
+                description, page_count, language
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(&volume_id)
+        .bind(&title)
+        .bind(series.as_deref())
+        .bind(number)
+        .bind(publisher.as_deref())
+        .bind(published_date.as_deref())
+        .bind(description.as_deref())
+        .bind(page_count)
+        .bind(language.as_deref())
+        .execute(sqlite_pool)
+        .await?;
+
+        for author in &authors {
+            sqlx::query(r#"INSERT INTO authors (name) VALUES (?) ON CONFLICT(name) DO NOTHING"#)
+                .bind(author)
+                .execute(sqlite_pool)
+                .await?;
+
+            sqlx::query(
+                r#"
+                INSERT INTO book_authors (volume_id, author_id, position)
+                SELECT ?, author_id, 0
+                FROM authors WHERE name = ?
+                "#,
+            )
+            .bind(&volume_id)
+            .bind(author)
+            .execute(sqlite_pool)
+            .await?;
+        }
+
+        for group in &groups {
+            sqlx::query(r#"INSERT INTO groups (name) VALUES (?) ON CONFLICT(name) DO NOTHING"#)
+                .bind(group)
+                .execute(sqlite_pool)
+                .await?;
+
+            sqlx::query(
+                r#"
+                INSERT INTO book_groups (volume_id, group_id)
+                SELECT ?, group_id
+                FROM groups WHERE name = ?
+                "#,
+            )
+            .bind(&volume_id)
+            .bind(group)
+            .execute(sqlite_pool)
+            .await?;
+        }
+
+        for (id_type, identifier) in &identifiers {
+            if !identifier.is_empty() {
+                sqlx::query(
+                    r#"
+                    INSERT INTO book_identifiers (volume_id, type, identifier)
+                    VALUES (?, ?, ?)
+                    "#,
+                )
+                .bind(&volume_id)
+                .bind(id_type)
+                .bind(identifier)
+                .execute(sqlite_pool)
+                .await?;
+            }
+        }
+
+        if let Some(orig_volume_id) = get_field("volume_id") {
+            let source_image = images_dir.join(format!("{}.jpg", orig_volume_id));
+            if source_image.exists() {
+                let dest_image = books_dir.join(format!("{}.jpg", volume_id));
+                std::fs::copy(&source_image, &dest_image).ok();
+            }
+        }
+
+        count += 1;
+    }
+
+    Ok(count)
+}

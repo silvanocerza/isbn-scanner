@@ -8,6 +8,7 @@ import {
   Pencil,
   Plus,
   Download,
+  Upload,
   PencilLine,
   Sun,
   Moon,
@@ -406,6 +407,15 @@ function App() {
     }
   };
 
+  const openImportDialog = async () => {
+    try {
+      const message = await invoke<string>("import_books_csv");
+      toast.success(message);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
+  };
+
   const cycleTheme = () => {
     setTheme((prev) => {
       if (prev === "light") {
@@ -429,6 +439,12 @@ function App() {
   };
 
   const items = [
+    {
+      id: "import",
+      icon: <Upload size={18} />,
+      ariaLabel: "Import",
+      onClick: openImportDialog,
+    },
     {
       id: "export",
       icon: <Download size={18} />,

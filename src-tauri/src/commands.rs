@@ -230,6 +230,38 @@ pub async fn export_books_csv(app_handle: tauri::AppHandle) -> Result<String, St
 }
 
 #[tauri::command]
+pub async fn import_books_csv(app_handle: tauri::AppHandle) -> Result<String, String> {
+    let path = app_handle
+        .dialog()
+        .file()
+        .add_filter("CSV", &["csv"])
+        .blocking_pick_file();
+
+    let Some(file_path) = path else {
+        return Err("Import cancelled".to_string());
+    };
+
+    let path_buf = match file_path {
+        tauri_plugin_dialog::FilePath::Path(p) => p,
+        tauri_plugin_dialog::FilePath::Url(u) => {
+            return Err(format!("URL paths not supported: {}", u));
+        }
+    };
+
+    let instances = app_handle.state::<DbInstances>();
+    let guard = instances.0.read().await;
+    let pool = guard.get("sqlite:books.db").ok_or("Database not found")?;
+
+    let count = crate::db::import_books_from_csv(pool, &path_buf, &app_handle)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let _ = app_handle.emit("book-added", &"ok");
+
+    Ok(format!("Imported {} books", count))
+}
+
+#[tauri::command]
 pub async fn find_comic_by_ean(
     ean: String,
     app_handle: tauri::AppHandle,
