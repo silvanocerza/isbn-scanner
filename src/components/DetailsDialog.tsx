@@ -444,6 +444,7 @@ export function DetailsDialog({
                   <Field
                     label="Year"
                     value={form.published_date}
+                    type="number"
                     onChange={(v) =>
                       setForm((f) => ({ ...f, published_date: v }))
                     }
@@ -1016,12 +1017,16 @@ function Field({
         className="w-full rounded-lg border border-gray-300 dark:border-zinc-600 px-3.5 py-2.5 text-sm outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white dark:bg-zinc-700 text-gray-900 dark:text-white disabled:bg-gray-50 dark:disabled:bg-zinc-800 disabled:text-gray-500 dark:disabled:text-gray-400 disabled:border-gray-200 dark:disabled:border-zinc-600 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20"
         value={inputValue}
         onChange={(e) => {
-          setInputValue(e.target.value);
-          onChange(e.target.value);
+          const value =
+            type === "number"
+              ? e.target.value.replace(/\D/g, "")
+              : e.target.value;
+          setInputValue(value);
+          onChange(value);
         }}
         onKeyDown={handleKeyDown}
         disabled={disabled}
-        type={type}
+        type="text"
         step={step}
       />
       {filteredSuggestions && filteredSuggestions.length > 0 && (

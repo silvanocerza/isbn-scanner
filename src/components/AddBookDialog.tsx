@@ -243,6 +243,8 @@ export function AddBookDialog({
               id="title"
               ref={titleRef}
               type="text"
+              autoComplete="off"
+              autoCorrect="off"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., The Pragmatic Programmer"
@@ -433,6 +435,8 @@ export function AddBookDialog({
             <input
               id="authors"
               type="text"
+              autoComplete="off"
+              autoCorrect="off"
               value={authors}
               onChange={(e) => setAuthors(e.target.value)}
               placeholder="e.g., Andrew Hunt, David Thomas"
@@ -460,6 +464,8 @@ export function AddBookDialog({
             <input
               id="publisher"
               type="text"
+              autoComplete="off"
+              autoCorrect="off"
               value={publisher}
               onChange={(e) => setPublisher(e.target.value)}
               placeholder="e.g., Addison-Wesley"
@@ -484,10 +490,11 @@ export function AddBookDialog({
             <input
               id="year"
               type="text"
+              autoComplete="off"
+              autoCorrect="off"
               inputMode="numeric"
-              pattern="[0-9]*"
               value={year}
-              onChange={(e) => setYear(e.target.value)}
+              onChange={(e) => setYear(e.target.value.replace(/\D/g, ""))}
               placeholder="e.g., 1999"
               className={cn(
                 "w-full rounded-lg border",
