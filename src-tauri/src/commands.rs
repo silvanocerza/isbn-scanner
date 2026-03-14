@@ -47,8 +47,8 @@ pub async fn fetch_isbn(
         .await
     {
         Ok(Some(volume_id)) => {
-            let book = get_book(pool, &volume_id).await.unwrap();
-            let books = find_books_containing_title(pool, book.title.as_str())
+            let book = get_book(pool, &app_handle, &volume_id).await.unwrap();
+            let books = find_books_containing_title(pool, book.book.title.as_str())
                 .await
                 .unwrap();
 

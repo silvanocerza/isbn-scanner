@@ -231,7 +231,11 @@ pub async fn fetch_all_books(
     Ok(result)
 }
 
-pub async fn get_book(pool: &tauri_plugin_sql::DbPool, volume_id: &str) -> anyhow::Result<Book> {
+pub async fn get_book(
+    pool: &tauri_plugin_sql::DbPool,
+    app_handle: &tauri::AppHandle,
+    volume_id: &str,
+) -> anyhow::Result<BookWithThumbnail> {
     let tauri_plugin_sql::DbPool::Sqlite(sqlite_pool) = pool;
     let mut book = sqlx::query_as::<_, Book>(
         r#"
@@ -251,6 +255,19 @@ pub async fn get_book(pool: &tauri_plugin_sql::DbPool, volume_id: &str) -> anyho
     .fetch_one(sqlite_pool)
     .await?;
 
+    let authors = sqlx::query_as::<_, Author>(
+        r#"
+        SELECT a.name
+        FROM authors a
+        JOIN book_authors ba ON a.author_id = ba.author_id
+        WHERE ba.volume_id = ?
+        ORDER BY ba.position
+        "#,
+    )
+    .bind(volume_id)
+    .fetch_all(sqlite_pool)
+    .await?;
+
     let groups = sqlx::query_scalar::<_, String>(
         r#"
         SELECT g.name
@@ -266,9 +283,36 @@ pub async fn get_book(pool: &tauri_plugin_sql::DbPool, volume_id: &str) -> anyho
 
     let custom_fields = load_custom_fields_for_book(sqlite_pool, volume_id).await?;
 
+    let isbns = sqlx::query_scalar::<_, String>(
+        r#"
+        SELECT identifier
+        FROM book_identifiers
+        WHERE volume_id = ?
+        ORDER BY type DESC
+        "#,
+    )
+    .bind(volume_id)
+    .fetch_all(sqlite_pool)
+    .await?;
+
+    let app_data_dir = app_handle.path().app_data_dir()?;
+    let books_dir = app_data_dir.join("books");
+    let thumbnail_path = books_dir.join(format!("{}.jpg", book.volume_id));
+    let thumbnail = if thumbnail_path.exists() {
+        Some(thumbnail_path.to_string_lossy().to_string())
+    } else {
+        None
+    };
+
     book.groups = groups;
     book.custom_fields = custom_fields;
-    Ok(book)
+
+    Ok(BookWithThumbnail {
+        book,
+        authors,
+        isbns,
+        thumbnail,
+    })
 }
 
 pub async fn find_books_containing_title(
