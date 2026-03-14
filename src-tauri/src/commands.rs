@@ -9,6 +9,7 @@ use tauri_plugin_sql::DbInstances;
 use crate::db::find_books_containing_title;
 use crate::db::get_book;
 use crate::db::Book;
+use crate::db::BookWithThumbnail;
 use crate::AppConfig;
 
 #[tauri::command]
@@ -29,7 +30,7 @@ pub async fn fetch_isbn(
     isbn: String,
     config: State<'_, AppConfig>,
     app_handle: tauri::AppHandle,
-) -> Result<String, String> {
+) -> Result<BookWithThumbnail, String> {
     let instances = app_handle.state::<DbInstances>();
     let guard = instances.0.read().await;
     let pool = guard.get("sqlite:books.db").ok_or("Database not found")?;
@@ -66,10 +67,10 @@ pub async fn fetch_isbn(
             if books.len() > 1 {
                 let _ = app_handle.emit("possible-comic-found", &book);
             } else {
-                let _ = app_handle.emit("book-added", &volume_id);
+                let _ = app_handle.emit("book-added", &book);
             }
 
-            Ok(volume_id)
+            Ok(book)
         }
         Ok(None) => Err(format!("No results found for ISBN: {isbn}")),
         Err(e) => Err(format!("Failed to import book: {e}")),

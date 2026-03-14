@@ -218,20 +218,20 @@ function App() {
     localStorage.setItem("groupByTitle", String(groupByTitle));
   }, [groupByTitle]);
 
-  const handleBookSaved = async (volume_id: string) => {
+  const handleBookSaved = async (book: BookWithThumbnail) => {
     const result = await invoke<string>("set_book_groups", {
-      volumeId: volume_id,
+      volumeId: book.book.volume_id,
       groups: groups,
     });
     console.log(result);
 
-    console.log("Success:", volume_id);
+    console.log("Success:", book.book.volume_id);
     const settings = await loadSettings();
     if (settings.successSound) {
       new Audio("/success.mp3").play();
     }
     emit("book-updated");
-    toast.success(`Added ${volume_id}`);
+    toast.success(`Added ${book.book.title}`);
   };
 
   const handleNewEAN = async (ean: string) => {
@@ -293,8 +293,10 @@ function App() {
         });
         if (exists) return;
 
-        const result = await invoke<string>("fetch_isbn", { isbn: text });
-        await handleBookSaved(result);
+        const book = await invoke<BookWithThumbnail>("fetch_isbn", {
+          isbn: text,
+        });
+        await handleBookSaved(book);
       } catch (error) {
         console.log(error);
         handleClipboardError(text, String(error));
