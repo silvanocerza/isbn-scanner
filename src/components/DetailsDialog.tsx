@@ -15,6 +15,7 @@ export interface DetailsDialogProps {
   hasPrev?: boolean;
   knownGroups?: string[];
   knownCustomFields?: string[];
+  knownSeries?: string[];
   onDelete?: () => void;
 }
 
@@ -29,6 +30,7 @@ export function DetailsDialog({
   hasPrev = false,
   knownGroups = [],
   knownCustomFields = [],
+  knownSeries = [],
   onDelete,
 }: DetailsDialogProps) {
   const [saving, setSaving] = useState(false);
@@ -416,6 +418,7 @@ export function DetailsDialog({
                     label="Series"
                     value={form.series}
                     onChange={(v) => setForm((f) => ({ ...f, series: v }))}
+                    suggestions={knownSeries}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -944,6 +947,7 @@ function Field({
   disabled,
   type,
   step,
+  suggestions,
 }: {
   label: string;
   value?: string | number;
@@ -951,20 +955,107 @@ function Field({
   disabled?: boolean;
   type?: React.InputHTMLAttributes<HTMLInputElement>["type"];
   step?: React.InputHTMLAttributes<HTMLInputElement>["step"];
+  suggestions?: string[];
 }) {
+  const [inputValue, setInputValue] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const filteredSuggestions = suggestions?.filter(
+    (s) =>
+      inputValue.trim() &&
+      s.toLowerCase().includes(inputValue.toLowerCase()) &&
+      s !== value,
+  );
+
+  useEffect(() => {
+    setInputValue(String(value ?? ""));
+  }, [value]);
+
+  useEffect(() => {
+    setSelectedIndex(-1);
+  }, [inputValue]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (filteredSuggestions && filteredSuggestions.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedIndex((prev) =>
+          prev < filteredSuggestions.length - 1 ? prev + 1 : prev,
+        );
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (selectedIndex >= 0) {
+          onChange(filteredSuggestions[selectedIndex]);
+          setInputValue(filteredSuggestions[selectedIndex]);
+        } else if (inputValue.trim()) {
+          onChange(inputValue.trim());
+        }
+        return;
+      } else if (e.key === "Escape") {
+        setSelectedIndex(-1);
+        return;
+      }
+    } else if (e.key === "Enter" && inputValue.trim()) {
+      onChange(inputValue.trim());
+    }
+  };
+
   return (
-    <label className="block group">
+    <label className="block group relative">
       <span className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-300">
         {label}
       </span>
       <input
+        ref={inputRef}
+        autoComplete="off"
+        autoCorrect="off"
         className="w-full rounded-lg border border-gray-300 dark:border-zinc-600 px-3.5 py-2.5 text-sm outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white dark:bg-zinc-700 text-gray-900 dark:text-white disabled:bg-gray-50 dark:disabled:bg-zinc-800 disabled:text-gray-500 dark:disabled:text-gray-400 disabled:border-gray-200 dark:disabled:border-zinc-600 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+        value={inputValue}
+        onChange={(e) => {
+          setInputValue(e.target.value);
+          onChange(e.target.value);
+        }}
+        onKeyDown={handleKeyDown}
         disabled={disabled}
         type={type}
         step={step}
       />
+      {filteredSuggestions && filteredSuggestions.length > 0 && (
+        <div
+          className={cn(
+            "absolute top-full left-0 right-0 mt-1 rounded-lg",
+            "bg-white dark:bg-zinc-700",
+            "border border-zinc-200 dark:border-zinc-600",
+            "shadow-lg z-20",
+          )}
+        >
+          {filteredSuggestions.map((suggestion, index) => (
+            <button
+              key={suggestion}
+              type="button"
+              onClick={() => {
+                onChange(suggestion);
+                setInputValue(suggestion);
+              }}
+              className={cn(
+                "w-full text-left px-3 py-2",
+                "text-sm text-gray-900 dark:text-white",
+                "transition-colors",
+                "first:rounded-t-lg last:rounded-b-lg",
+                selectedIndex === index
+                  ? "bg-blue-500 text-white"
+                  : "hover:bg-gray-100 dark:hover:bg-zinc-600",
+              )}
+            >
+              {suggestion}
+            </button>
+          ))}
+        </div>
+      )}
     </label>
   );
 }

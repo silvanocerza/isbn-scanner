@@ -18,6 +18,7 @@ interface AddBookDialogProps {
   className?: string;
   initialIdentifier?: string;
   initialSeries?: string;
+  knownSeries?: string[];
 }
 
 export function AddBookDialog({
@@ -27,9 +28,13 @@ export function AddBookDialog({
   className,
   initialIdentifier = "",
   initialSeries = "",
+  knownSeries = [],
 }: AddBookDialogProps) {
   const [title, setTitle] = useState("");
   const [series, setSeries] = useState("");
+  const [seriesInput, setSeriesInput] = useState("");
+  const [seriesSelectedIndex, setSeriesSelectedIndex] = useState(-1);
+  const seriesInputRef = useRef<HTMLInputElement>(null);
   const [number, setNumber] = useState("");
   const [authors, setAuthors] = useState("");
   const [publisher, setPublisher] = useState("");
@@ -39,14 +44,23 @@ export function AddBookDialog({
 
   const titleRef = useRef<HTMLInputElement | null>(null);
 
+  const filteredSeriesSuggestions = knownSeries.filter(
+    (s) =>
+      seriesInput.trim() &&
+      s.toLowerCase().includes(seriesInput.toLowerCase()) &&
+      s !== series,
+  );
+
   useEffect(() => {
     if (open) {
       setIdentifier(initialIdentifier);
       setSeries(initialSeries);
+      setSeriesInput(initialSeries);
       setTimeout(() => titleRef.current?.focus(), 0);
     } else {
       setTitle("");
       setSeries("");
+      setSeriesInput("");
       setNumber("");
       setAuthors("");
       setPublisher("");
@@ -54,7 +68,39 @@ export function AddBookDialog({
       setIdentifier("");
     }
     setSubmitting(false);
-  }, [open, initialIdentifier]);
+  }, [open, initialIdentifier, initialSeries]);
+
+  useEffect(() => {
+    setSeriesSelectedIndex(-1);
+  }, [seriesInput]);
+
+  const handleSeriesKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (filteredSeriesSuggestions.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSeriesSelectedIndex((prev) =>
+          prev < filteredSeriesSuggestions.length - 1 ? prev + 1 : prev,
+        );
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSeriesSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (seriesSelectedIndex >= 0) {
+          setSeries(filteredSeriesSuggestions[seriesSelectedIndex]);
+          setSeriesInput(filteredSeriesSuggestions[seriesSelectedIndex]);
+        } else if (seriesInput.trim()) {
+          setSeries(seriesInput.trim());
+        }
+        return;
+      } else if (e.key === "Escape") {
+        setSeriesSelectedIndex(-1);
+        return;
+      }
+    } else if (e.key === "Enter" && seriesInput.trim()) {
+      setSeries(seriesInput.trim());
+    }
+  };
 
   if (!open) {
     return null;
@@ -178,21 +224,62 @@ export function AddBookDialog({
             >
               Series
             </label>
-            <input
-              id="series"
-              type="text"
-              value={series}
-              onChange={(e) => setSeries(e.target.value)}
-              placeholder="e.g., The Pragmatic Programmer"
-              className={cn(
-                "w-full rounded-lg border",
-                "bg-white dark:bg-zinc-800",
-                "border-zinc-300 dark:border-zinc-700",
-                "px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100",
-                "placeholder:text-zinc-400",
-                "focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500",
+            <div className="relative">
+              <input
+                ref={seriesInputRef}
+                id="series"
+                type="text"
+                autoComplete="off"
+                autoCorrect="off"
+                value={seriesInput}
+                onChange={(e) => {
+                  setSeriesInput(e.target.value);
+                  setSeries(e.target.value);
+                }}
+                onKeyDown={handleSeriesKeyDown}
+                placeholder="e.g., The Pragmatic Programmer"
+                className={cn(
+                  "w-full rounded-lg border",
+                  "bg-white dark:bg-zinc-800",
+                  "border-zinc-300 dark:border-zinc-700",
+                  "px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100",
+                  "placeholder:text-zinc-400",
+                  "focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500",
+                )}
+              />
+              {filteredSeriesSuggestions.length > 0 && (
+                <div
+                  className={cn(
+                    "absolute top-full left-0 right-0 mt-1 rounded-lg",
+                    "bg-white dark:bg-zinc-700",
+                    "border border-zinc-200 dark:border-zinc-600",
+                    "shadow-lg z-10",
+                  )}
+                >
+                  {filteredSeriesSuggestions.map((suggestion, index) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      onClick={() => {
+                        setSeries(suggestion);
+                        setSeriesInput(suggestion);
+                      }}
+                      className={cn(
+                        "w-full text-left px-3 py-2",
+                        "text-sm text-zinc-900 dark:text-white",
+                        "transition-colors",
+                        "first:rounded-t-lg last:rounded-b-lg",
+                        seriesSelectedIndex === index
+                          ? "bg-blue-500 text-white"
+                          : "hover:bg-zinc-100 dark:hover:bg-zinc-600",
+                      )}
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
               )}
-            />
+            </div>
           </div>
 
           <div className="space-y-2">

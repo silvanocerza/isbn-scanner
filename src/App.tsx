@@ -51,6 +51,7 @@ function App() {
   const [groups, setGroups] = useState<string[]>([]);
   const [knownGroups, setKnownGroups] = useState<string[]>([]);
   const [knownCustomFields, setKnownCustomFields] = useState<string[]>([]);
+  const [knownSeries, setKnownSeries] = useState<string[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [addOpenWithIdentifier, setAddOpenWithIdentifier] = useState("");
   const [addOpenWithSeries, setAddOpenWithSeries] = useState("");
@@ -88,6 +89,11 @@ function App() {
         }),
       );
       setBooks(books);
+      const series = new Set<string>();
+      books.forEach((b) => {
+        if (b.series) series.add(b.series);
+      });
+      setKnownSeries(Array.from(series).sort());
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -118,6 +124,11 @@ function App() {
         }),
       );
       setBooks(books);
+      const series = new Set<string>();
+      books.forEach((b) => {
+        if (b.series) series.add(b.series);
+      });
+      setKnownSeries(Array.from(series).sort());
       setError(null);
       if (scrollRef.current) {
         scrollRef.current.scrollTop = scrollTop;
@@ -549,6 +560,7 @@ function App() {
         onSubmit={handleAddBook}
         initialIdentifier={addOpenWithIdentifier}
         initialSeries={addOpenWithSeries}
+        knownSeries={knownSeries}
       />
       <SettingsDialog
         open={settingsOpen}
@@ -564,6 +576,7 @@ function App() {
           initial={selectedBook}
           knownGroups={knownGroups}
           knownCustomFields={knownCustomFields}
+          knownSeries={knownSeries}
           onNext={() => {
             const currentIndex = filteredBooks.indexOf(selectedBook);
             setSelectedBook(filteredBooks[currentIndex + 1]);
