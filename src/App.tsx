@@ -1,5 +1,5 @@
 import "./App.css";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { KeypressListener } from "./components/KeypressListener";
 import { BookGrid, GroupedBooks } from "./components/BookGrid";
 import { PillNav } from "./components/PillNav";
@@ -98,6 +98,40 @@ function App() {
     }
   };
 
+  const reloadBooks = async () => {
+    const scrollTop = scrollRef.current?.scrollTop ?? 0;
+    try {
+      const result = await invoke<BookWithThumbnail[]>("get_all_books");
+      const books = await Promise.all(
+        result.map(async (item) => {
+          if (!item.thumbnail) {
+            return item;
+          }
+
+          try {
+            const data = await readFile(item.thumbnail);
+            const blob = new Blob([data], { type: "image/jpeg" });
+            item.thumbnail = URL.createObjectURL(blob);
+          } catch (err) {
+            item.thumbnail = undefined;
+            console.error(
+              `Failed to load image for ${item.book.volume_id}`,
+              err,
+            );
+          }
+          return item;
+        }),
+      );
+      setBooks(books);
+      setError(null);
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollTop;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
   const loadGroups = async () => {
     try {
       const result = await invoke<string[]>("get_all_groups");
@@ -121,19 +155,17 @@ function App() {
     applyTheme(theme);
   }, [theme]);
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     loadBooks();
     loadGroups();
     loadCustomFields();
     const un1 = listen("book-added", () => {
-      loadBooks();
-      loadGroups();
-      loadCustomFields();
+      reloadBooks();
     });
     const un2 = listen("book-updated", () => {
-      loadBooks();
-      loadGroups();
-      loadCustomFields();
+      reloadBooks();
     });
     return () => {
       un1.then((f) => f());
@@ -453,7 +485,10 @@ function App() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto pt-24 bg-white dark:bg-zinc-900 transition-colors">
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto pt-24 bg-white dark:bg-zinc-900 transition-colors"
+      >
         <BookGrid
           books={filteredBooks}
           loading={loading}
@@ -503,7 +538,9 @@ function App() {
                 volumeId: selectedBook.book.volume_id,
               });
               setDetailsOpen(false);
-              emit("book-updated");
+              reloadBooks();
+              loadGroups();
+              loadCustomFields();
             } catch (err) {
               toast.error(err instanceof Error ? err.message : String(err));
             }
