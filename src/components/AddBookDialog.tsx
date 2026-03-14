@@ -5,6 +5,8 @@ export type AddBookPayload = {
   title: string;
   series?: string;
   number?: number;
+  numberStart?: number;
+  numberEnd?: number;
   authors?: string[];
   publisher?: string;
   year?: string;
@@ -35,7 +37,10 @@ export function AddBookDialog({
   const [seriesInput, setSeriesInput] = useState("");
   const [seriesSelectedIndex, setSeriesSelectedIndex] = useState(-1);
   const seriesInputRef = useRef<HTMLInputElement>(null);
+  const [numberMode, setNumberMode] = useState<"single" | "range">("single");
   const [number, setNumber] = useState("");
+  const [numberStart, setNumberStart] = useState("");
+  const [numberEnd, setNumberEnd] = useState("");
   const [authors, setAuthors] = useState("");
   const [publisher, setPublisher] = useState("");
   const [year, setYear] = useState("");
@@ -61,7 +66,10 @@ export function AddBookDialog({
       setTitle("");
       setSeries("");
       setSeriesInput("");
+      setNumberMode("single");
       setNumber("");
+      setNumberStart("");
+      setNumberEnd("");
       setAuthors("");
       setPublisher("");
       setYear("");
@@ -106,7 +114,28 @@ export function AddBookDialog({
     return null;
   }
 
-  const canSubmit = title.trim().length > 0 && !submitting;
+  const isValidNumber = () => {
+    if (numberMode === "single") {
+      return number.trim() ? !isNaN(parseInt(number.trim(), 10)) : true;
+    } else {
+      const start = numberStart.trim()
+        ? parseInt(numberStart.trim(), 10)
+        : undefined;
+      const end = numberEnd.trim() ? parseInt(numberEnd.trim(), 10) : undefined;
+      if (start === undefined || end === undefined) return true;
+      return start > 0 && end > 0 && start <= end;
+    }
+  };
+
+  const bookCount = () => {
+    if (numberMode === "single") return 1;
+    const start = numberStart.trim() ? parseInt(numberStart.trim(), 10) : 0;
+    const end = numberEnd.trim() ? parseInt(numberEnd.trim(), 10) : 0;
+    if (start > 0 && end > 0 && start <= end) return end - start + 1;
+    return 0;
+  };
+
+  const canSubmit = title.trim().length > 0 && isValidNumber() && !submitting;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -115,7 +144,18 @@ export function AddBookDialog({
       const payload: AddBookPayload = {
         title: title.trim(),
         series: series.trim() || undefined,
-        number: number.trim() ? parseInt(number.trim(), 10) : undefined,
+        number:
+          numberMode === "single" && number.trim()
+            ? parseInt(number.trim(), 10)
+            : undefined,
+        numberStart:
+          numberMode === "range" && numberStart.trim()
+            ? parseInt(numberStart.trim(), 10)
+            : undefined,
+        numberEnd:
+          numberMode === "range" && numberEnd.trim()
+            ? parseInt(numberEnd.trim(), 10)
+            : undefined,
         authors: authors
           .split(",")
           .map((s) => s.trim())
@@ -283,29 +323,104 @@ export function AddBookDialog({
           </div>
 
           <div className="space-y-2">
-            <label
-              htmlFor="number"
-              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-            >
+            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
               Number
             </label>
-            <input
-              id="number"
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={number}
-              onChange={(e) => setNumber(e.target.value)}
-              placeholder="e.g., 1"
-              className={cn(
-                "w-full rounded-lg border",
-                "bg-white dark:bg-zinc-800",
-                "border-zinc-300 dark:border-zinc-700",
-                "px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100",
-                "placeholder:text-zinc-400",
-                "focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500",
+            <div className="flex rounded-lg bg-zinc-100 dark:bg-zinc-800 p-1">
+              <button
+                type="button"
+                onClick={() => setNumberMode("single")}
+                className={cn(
+                  "flex-1 py-1.5 px-3 text-sm font-medium rounded-md transition-colors",
+                  numberMode === "single"
+                    ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm"
+                    : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200",
+                )}
+              >
+                Single
+              </button>
+              <button
+                type="button"
+                onClick={() => setNumberMode("range")}
+                className={cn(
+                  "flex-1 py-1.5 px-3 text-sm font-medium rounded-md transition-colors",
+                  numberMode === "range"
+                    ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm"
+                    : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200",
+                )}
+              >
+                Range
+              </button>
+            </div>
+
+            {numberMode === "single" ? (
+              <input
+                id="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={number}
+                onChange={(e) => setNumber(e.target.value.replace(/\D/g, ""))}
+                placeholder="e.g., 1"
+                className={cn(
+                  "w-full rounded-lg border",
+                  "bg-white dark:bg-zinc-800",
+                  "border-zinc-300 dark:border-zinc-700",
+                  "px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100",
+                  "placeholder:text-zinc-400",
+                  "focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500",
+                )}
+              />
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  id="numberStart"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={numberStart}
+                  onChange={(e) =>
+                    setNumberStart(e.target.value.replace(/\D/g, ""))
+                  }
+                  placeholder="From"
+                  className={cn(
+                    "w-full rounded-lg border",
+                    "bg-white dark:bg-zinc-800",
+                    "border-zinc-300 dark:border-zinc-700",
+                    "px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100",
+                    "placeholder:text-zinc-400",
+                    "focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500",
+                  )}
+                />
+                <input
+                  id="numberEnd"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={numberEnd}
+                  onChange={(e) =>
+                    setNumberEnd(e.target.value.replace(/\D/g, ""))
+                  }
+                  placeholder="To"
+                  className={cn(
+                    "w-full rounded-lg border",
+                    "bg-white dark:bg-zinc-800",
+                    "border-zinc-300 dark:border-zinc-700",
+                    "px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100",
+                    "placeholder:text-zinc-400",
+                    "focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500",
+                  )}
+                />
+              </div>
+            )}
+            {numberMode === "range" &&
+              numberStart.trim() &&
+              numberEnd.trim() && (
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Will create <strong>{bookCount()}</strong> books (
+                  {numberStart} to {numberEnd})
+                </p>
               )}
-            />
           </div>
 
           <div className="space-y-2">
@@ -409,7 +524,11 @@ export function AddBookDialog({
                 !canSubmit && "opacity-60 cursor-not-allowed",
               )}
             >
-              {submitting ? "Saving..." : "Save"}
+              {submitting
+                ? "Saving..."
+                : bookCount() > 1
+                  ? `Add ${bookCount()} Books`
+                  : "Save"}
             </button>
           </div>
         </div>

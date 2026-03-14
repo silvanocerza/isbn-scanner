@@ -332,10 +332,21 @@ function App() {
   };
 
   const handleAddBook = async (payload: AddBookPayload) => {
-    await invoke<string>("add_book", {
-      ...payload,
-      groups,
-    });
+    const { numberStart, numberEnd, ...rest } = payload;
+    if (numberStart !== undefined && numberEnd !== undefined) {
+      for (let i = numberStart; i <= numberEnd; i++) {
+        await invoke<string>("add_book", {
+          ...rest,
+          number: i,
+          groups,
+        });
+      }
+    } else {
+      await invoke<string>("add_book", {
+        ...payload,
+        groups,
+      });
+    }
   };
 
   const handleSetBookNumber = async (volumeId: string, numbers: number[]) => {
