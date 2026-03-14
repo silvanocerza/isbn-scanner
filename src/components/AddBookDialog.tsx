@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "../utils";
 
-type AddBookPayload = {
+export type AddBookPayload = {
   title: string;
   number?: number;
   authors?: string[];

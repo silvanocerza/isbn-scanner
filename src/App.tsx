@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { Toaster, toast } from "sonner";
-import { AddBookDialog } from "./components/AddBookDialog";
+import { AddBookDialog, AddBookPayload } from "./components/AddBookDialog";
 import { invoke } from "@tauri-apps/api/core";
 import { DetailsDialog } from "./components/DetailsDialog";
 import { cn, getColorForGroup, isISBN, isEAN13, isOnlyDigits } from "./utils";
@@ -319,20 +319,10 @@ function App() {
     setAddOpen(!addOpen);
   };
 
-  const handleAddBook = async (payload: {
-    title: string;
-    authors?: string[];
-    publisher?: string;
-    year?: string;
-    identifier?: string;
-  }) => {
+  const handleAddBook = async (payload: AddBookPayload) => {
     await invoke<string>("add_book", {
-      title: payload.title,
-      authors: payload.authors,
-      publisher: payload.publisher,
-      year: payload.year,
+      ...payload,
       groups,
-      identifier: payload.identifier,
     });
   };
 
