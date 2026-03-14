@@ -48,6 +48,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             crate::commands::fetch_isbn,
             crate::commands::get_all_books,
+            crate::commands::get_single_book,
             crate::commands::isbn_exists,
             crate::commands::get_settings,
             crate::commands::set_settings,

@@ -77,15 +77,28 @@ pub async fn fetch_isbn(
 }
 
 #[tauri::command]
-pub async fn get_all_books(
-    app_handle: tauri::AppHandle,
-) -> Result<Vec<crate::db::Book>, String> {
+pub async fn get_all_books(app_handle: tauri::AppHandle) -> Result<Vec<crate::db::Book>, String> {
     let instances = app_handle.state::<DbInstances>();
     let guard = instances.0.read().await;
 
     let pool = guard.get("sqlite:books.db").ok_or("Database not found")?;
 
     crate::db::fetch_all_books(&pool, &app_handle)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_single_book(
+    volume_id: String,
+    app_handle: tauri::AppHandle,
+) -> Result<crate::db::Book, String> {
+    let instances = app_handle.state::<DbInstances>();
+    let guard = instances.0.read().await;
+
+    let pool = guard.get("sqlite:books.db").ok_or("Database not found")?;
+
+    crate::db::get_book(&pool, &app_handle, &volume_id)
         .await
         .map_err(|e| e.to_string())
 }

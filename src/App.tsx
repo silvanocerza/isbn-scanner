@@ -102,6 +102,20 @@ function App() {
     }
   };
 
+  const loadBookThumbnail = async (book: Book): Promise<Book> => {
+    if (!book.thumbnail) {
+      return book;
+    }
+    try {
+      const data = await readFile(book.thumbnail);
+      const blob = new Blob([data], { type: "image/jpeg" });
+      return { ...book, thumbnail: URL.createObjectURL(blob) };
+    } catch (err) {
+      console.error(`Failed to load image for ${book.volume_id}`, err);
+      return { ...book, thumbnail: undefined };
+    }
+  };
+
   const reloadBooks = async () => {
     const scrollTop = scrollRef.current?.scrollTop ?? 0;
     try {
@@ -333,20 +347,35 @@ function App() {
 
   const handleAddBook = async (payload: AddBookPayload) => {
     const { numberStart, numberEnd, ...rest } = payload;
+    const newBooks: Book[] = [];
+
     if (numberStart !== undefined && numberEnd !== undefined) {
       for (let i = numberStart; i <= numberEnd; i++) {
-        await invoke<string>("add_book", {
+        const volumeId = await invoke<string>("add_book", {
           ...rest,
           number: i,
           groups,
         });
+        const book = await invoke<Book>("get_single_book", { volumeId });
+        newBooks.push(await loadBookThumbnail(book));
       }
     } else {
-      await invoke<string>("add_book", {
+      const volumeId = await invoke<string>("add_book", {
         ...payload,
         groups,
       });
+      const book = await invoke<Book>("get_single_book", { volumeId });
+      newBooks.push(await loadBookThumbnail(book));
     }
+
+    setBooks((prev) => [...prev, ...newBooks]);
+    setKnownSeries((prev) => {
+      const all = new Set([...prev]);
+      newBooks.forEach((b) => {
+        if (b.series) all.add(b.series);
+      });
+      return Array.from(all).sort();
+    });
   };
 
   const handleSetBookNumber = async (volumeId: string, numbers: number[]) => {
@@ -601,6 +630,16 @@ function App() {
             filteredBooks.indexOf(selectedBook) !== filteredBooks.length - 1
           }
           hasPrev={selectedBook && filteredBooks.indexOf(selectedBook) !== 0}
+          onSaveComplete={(book) => {
+            setBooks((prev) =>
+              prev.map((b) => (b.volume_id === book.volume_id ? book : b)),
+            );
+            setKnownSeries((prev) => {
+              const all = new Set([...prev]);
+              if (book.series) all.add(book.series);
+              return Array.from(all).sort();
+            });
+          }}
           onDelete={async () => {
             if (!selectedBook) return;
             try {
@@ -608,9 +647,9 @@ function App() {
                 volumeId: selectedBook.volume_id,
               });
               setDetailsOpen(false);
-              reloadBooks();
-              loadGroups();
-              loadCustomFields();
+              setBooks((prev) =>
+                prev.filter((b) => b.volume_id !== selectedBook.volume_id),
+              );
             } catch (err) {
               toast.error(err instanceof Error ? err.message : String(err));
             }

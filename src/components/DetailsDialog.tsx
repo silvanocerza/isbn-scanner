@@ -17,6 +17,7 @@ export interface DetailsDialogProps {
   knownCustomFields?: string[];
   knownSeries?: string[];
   onDelete?: () => void;
+  onSaveComplete?: (book: Book) => void;
 }
 
 export function DetailsDialog({
@@ -32,6 +33,7 @@ export function DetailsDialog({
   knownCustomFields = [],
   knownSeries = [],
   onDelete,
+  onSaveComplete,
 }: DetailsDialogProps) {
   const [saving, setSaving] = useState(false);
   const [groupInput, setGroupInput] = useState("");
@@ -312,6 +314,21 @@ export function DetailsDialog({
           custom_fields: form.custom_fields,
         },
       });
+      const updatedBook: Book = {
+        ...initial,
+        title: form.title,
+        series: form.series.trim() || undefined,
+        number: form.number,
+        publisher: form.publisher.trim() || undefined,
+        published_date: form.published_date.trim() || undefined,
+        description: form.description.trim() || undefined,
+        page_count: form.page_count,
+        language: form.language.trim() || undefined,
+        authors: authorsArr,
+        groups: groupsArr,
+        custom_fields: form.custom_fields,
+      };
+      onSaveComplete?.(updatedBook);
       onClose();
     } finally {
       setSaving(false);
