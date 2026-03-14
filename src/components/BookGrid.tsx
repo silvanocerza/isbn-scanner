@@ -33,69 +33,71 @@ function groupBooksByTitle(books: Book[]): GridItem[] {
     groups.get(title)!.push(book);
   }
 
-  return Array.from(groups.entries()).flatMap(([title, bookList]): GridItem[] => {
-    // Sort by number, putting books without numbers at the end
-    const sorted = bookList.sort((a, b) => {
-      const numA = a.number ?? Infinity;
-      const numB = b.number ?? Infinity;
-      return numA - numB;
-    });
+  return Array.from(groups.entries()).flatMap(
+    ([title, bookList]): GridItem[] => {
+      // Sort by number, putting books without numbers at the end
+      const sorted = bookList.sort((a, b) => {
+        const numA = a.number ?? Infinity;
+        const numB = b.number ?? Infinity;
+        return numA - numB;
+      });
 
-    // If only one book with this title, return as single book
-    if (sorted.length === 1) {
-      return [{ type: "book" as const, book: sorted[0] }];
-    }
+      // If only one book with this title, return as single book
+      if (sorted.length === 1) {
+        return [{ type: "book" as const, book: sorted[0] }];
+      }
 
-    const representative = sorted[0];
+      const representative = sorted[0];
 
-    // Build number ranges
-    const numbers = sorted
-      .map((b) => b.number)
-      .filter((n): n is number => n !== undefined)
-      .sort((a, b) => a - b);
+      // Build number ranges
+      const numbers = sorted
+        .map((b) => b.number)
+        .filter((n): n is number => n !== undefined)
+        .sort((a, b) => a - b);
 
-    const numberRanges: Array<{ start: number; end: number } | number> = [];
-    let rangeStart: number | null = null;
-    let rangeEnd: number | null = null;
+      const numberRanges: Array<{ start: number; end: number } | number> = [];
+      let rangeStart: number | null = null;
+      let rangeEnd: number | null = null;
 
-    for (const num of numbers) {
-      if (rangeStart === null) {
-        rangeStart = num;
-        rangeEnd = num;
-      } else if (num === rangeEnd! + 1) {
-        rangeEnd = num;
-      } else {
+      for (const num of numbers) {
+        if (rangeStart === null) {
+          rangeStart = num;
+          rangeEnd = num;
+        } else if (num === rangeEnd! + 1) {
+          rangeEnd = num;
+        } else {
+          if (rangeStart === rangeEnd) {
+            numberRanges.push(rangeStart);
+          } else {
+            numberRanges.push({ start: rangeStart, end: rangeEnd! });
+          }
+          rangeStart = num;
+          rangeEnd = num;
+        }
+      }
+
+      if (rangeStart !== null) {
         if (rangeStart === rangeEnd) {
           numberRanges.push(rangeStart);
         } else {
           numberRanges.push({ start: rangeStart, end: rangeEnd! });
         }
-        rangeStart = num;
-        rangeEnd = num;
       }
-    }
 
-    if (rangeStart !== null) {
-      if (rangeStart === rangeEnd) {
-        numberRanges.push(rangeStart);
-      } else {
-        numberRanges.push({ start: rangeStart, end: rangeEnd! });
-      }
-    }
-
-    return [
-      {
-        type: "group" as const,
-        group: {
-          title,
-          books: sorted,
-          representative,
-          numbers: numberRanges,
-          count: sorted.length,
+      return [
+        {
+          type: "group" as const,
+          group: {
+            title,
+            books: sorted,
+            representative,
+            numbers: numberRanges,
+            count: sorted.length,
+          },
         },
-      },
-    ];
-  });
+      ];
+    },
+  );
 }
 
 export function BookGrid({
@@ -163,6 +165,7 @@ export function BookGrid({
                       title={item.book.title}
                     >
                       {item.book.title}
+                      {item.book.series && <> - {item.book.series}</>}
                       {item.book.number && <> - {item.book.number}</>}
                     </h2>
 
@@ -284,6 +287,7 @@ export function BookGrid({
                     title={item.title}
                   >
                     {item.title}
+                    {item.series && <> - {item.series} </>}
                     {item.number && <> - {item.number}</>}
                   </h2>
 

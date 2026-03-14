@@ -402,6 +402,7 @@ pub async fn set_book_number(
 pub async fn insert_book(
     pool: &tauri_plugin_sql::DbPool,
     title: &str,
+    series: Option<&str>,
     number: Option<i64>,
     authors: &[String],
     groups: &[String],
@@ -420,14 +421,14 @@ pub async fn insert_book(
     sqlx::query(
         r#"
         INSERT INTO books (
-          volume_id, title, number, publisher, published_date,
+          volume_id, title, series, number, publisher, published_date,
           description, page_count, print_type, maturity_rating,
           language, preview_link, info_link, canonical_link,
           small_thumbnail, thumbnail, country, saleability, is_ebook,
           viewability, embeddable, public_domain, text_to_speech_permission,
           epub_available, pdf_available, web_reader_link, access_view_status, quote_sharing_allowed
         ) VALUES (
-          ?, ?, ?, ?, ?,
+          ?, ?, ?, ?, ?, ?,
           NULL, NULL, NULL, NULL,
           NULL, NULL, NULL, NULL,
           NULL, NULL, NULL, NULL, NULL,
@@ -438,6 +439,7 @@ pub async fn insert_book(
     )
     .bind(&volume_id)
     .bind(title)
+    .bind(series)
     .bind(number)
     .bind(publisher)
     .bind(year)
@@ -979,7 +981,7 @@ pub async fn clone_book(
           viewability, embeddable, public_domain, text_to_speech_permission,
           epub_available, pdf_available, web_reader_link, access_view_status, quote_sharing_allowed
         ) VALUES (
-          ?, ?, ?, ?, ?,
+          ?, ?, ?, ?, ?, ?,
           ?, ?, ?, ?,
           ?, ?, ?, ?,
           ?, ?, ?, ?, ?,

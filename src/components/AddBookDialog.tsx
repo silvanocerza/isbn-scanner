@@ -3,6 +3,7 @@ import { cn } from "../utils";
 
 export type AddBookPayload = {
   title: string;
+  series?: string;
   number?: number;
   authors?: string[];
   publisher?: string;
@@ -16,6 +17,7 @@ interface AddBookDialogProps {
   onSubmit: (payload: AddBookPayload) => Promise<void>;
   className?: string;
   initialIdentifier?: string;
+  initialSeries?: string;
 }
 
 export function AddBookDialog({
@@ -24,8 +26,10 @@ export function AddBookDialog({
   onSubmit,
   className,
   initialIdentifier = "",
+  initialSeries = "",
 }: AddBookDialogProps) {
   const [title, setTitle] = useState("");
+  const [series, setSeries] = useState("");
   const [number, setNumber] = useState("");
   const [authors, setAuthors] = useState("");
   const [publisher, setPublisher] = useState("");
@@ -38,9 +42,11 @@ export function AddBookDialog({
   useEffect(() => {
     if (open) {
       setIdentifier(initialIdentifier);
+      setSeries(initialSeries);
       setTimeout(() => titleRef.current?.focus(), 0);
     } else {
       setTitle("");
+      setSeries("");
       setNumber("");
       setAuthors("");
       setPublisher("");
@@ -62,6 +68,7 @@ export function AddBookDialog({
     try {
       const payload: AddBookPayload = {
         title: title.trim(),
+        series: series.trim() || undefined,
         number: number.trim() ? parseInt(number.trim(), 10) : undefined,
         authors: authors
           .split(",")
@@ -152,6 +159,30 @@ export function AddBookDialog({
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g., The Pragmatic Programmer"
+              className={cn(
+                "w-full rounded-lg border",
+                "bg-white dark:bg-zinc-800",
+                "border-zinc-300 dark:border-zinc-700",
+                "px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100",
+                "placeholder:text-zinc-400",
+                "focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500",
+              )}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label
+              htmlFor="series"
+              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+            >
+              Series
+            </label>
+            <input
+              id="series"
+              type="text"
+              value={series}
+              onChange={(e) => setSeries(e.target.value)}
               placeholder="e.g., The Pragmatic Programmer"
               className={cn(
                 "w-full rounded-lg border",

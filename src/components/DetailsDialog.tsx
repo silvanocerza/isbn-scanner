@@ -42,6 +42,7 @@ export function DetailsDialog({
 
   const [form, setForm] = useState({
     title: initial.title,
+    series: initial.series ?? "",
     number: initial.number,
     publisher: initial.publisher ?? "",
     published_date: initial.published_date ?? "",
@@ -56,6 +57,7 @@ export function DetailsDialog({
   useEffect(() => {
     setForm({
       title: initial.title,
+      series: initial.series ?? "",
       number: initial.number,
       publisher: initial.publisher ?? "",
       published_date: initial.published_date ?? "",
@@ -105,10 +107,7 @@ export function DetailsDialog({
   const allKnownCustomFields = useMemo(
     () =>
       Array.from(
-        new Set([
-          ...knownCustomFields,
-          ...Object.keys(initial.custom_fields),
-        ]),
+        new Set([...knownCustomFields, ...Object.keys(initial.custom_fields)]),
       ),
     [knownCustomFields, initial.custom_fields],
   );
@@ -256,6 +255,7 @@ export function DetailsDialog({
     return !(
       form.title === initial.title &&
       form.number === initial.number &&
+      form.series === initial.series &&
       (form.publisher || "") === (initial.publisher || "") &&
       (form.published_date || "") === (initial.published_date || "") &&
       (form.description || "") === (initial.description || "") &&
@@ -298,6 +298,7 @@ export function DetailsDialog({
         payload: {
           volume_id: initial.volume_id,
           title: form.title,
+          series: form.series || null,
           number: form.number,
           publisher: form.publisher || null,
           published_date: form.published_date || null,
@@ -358,8 +359,7 @@ export function DetailsDialog({
                 {form.authors}
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                {initial.volume_id.slice(0, 12)} ·{" "}
-                {initial.isbns.join(", ")} ·{" "}
+                {initial.volume_id.slice(0, 12)} · {initial.isbns.join(", ")} ·{" "}
                 {form.language || "Unknown language"}
               </p>
             </div>
@@ -412,6 +412,13 @@ export function DetailsDialog({
                     value={form.title}
                     onChange={(v) => setForm((f) => ({ ...f, title: v }))}
                   />
+                  <Field
+                    label="Series"
+                    value={form.series}
+                    onChange={(v) => setForm((f) => ({ ...f, series: v }))}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <Field
                     label="Number"
                     value={form.number}
@@ -740,11 +747,7 @@ export function DetailsDialog({
                   value={initial.preview_link}
                   isLink
                 />
-                <ViewField
-                  label="Info Link"
-                  value={initial.info_link}
-                  isLink
-                />
+                <ViewField label="Info Link" value={initial.info_link} isLink />
                 <ViewField
                   label="Canonical Link"
                   value={initial.canonical_link}
@@ -760,6 +763,9 @@ export function DetailsDialog({
               <div className="space-y-4 max-h-[400px] overflow-y-auto">
                 <div className="grid grid-cols-2 gap-4">
                   <ViewField label="Title" value={form.title} />
+                  <ViewField label="Series" value={form.series} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <ViewField label="Number" value={form.number} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -826,10 +832,7 @@ export function DetailsDialog({
                   <ViewField label="Language" value={form.language} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <ViewField
-                    label="Print Type"
-                    value={initial.print_type}
-                  />
+                  <ViewField label="Print Type" value={initial.print_type} />
                   <ViewField
                     label="Maturity Rating"
                     value={initial.maturity_rating}
@@ -837,10 +840,7 @@ export function DetailsDialog({
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <ViewField label="Country" value={initial.country} />
-                  <ViewField
-                    label="Saleability"
-                    value={initial.saleability}
-                  />
+                  <ViewField label="Saleability" value={initial.saleability} />
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <ViewField
@@ -874,10 +874,7 @@ export function DetailsDialog({
                   label="Text to Speech"
                   value={initial.text_to_speech_permission}
                 />
-                <ViewField
-                  label="Viewability"
-                  value={initial.viewability}
-                />
+                <ViewField label="Viewability" value={initial.viewability} />
                 <ViewField
                   label="Access View Status"
                   value={initial.access_view_status}
@@ -887,11 +884,7 @@ export function DetailsDialog({
                   value={initial.preview_link}
                   isLink
                 />
-                <ViewField
-                  label="Info Link"
-                  value={initial.info_link}
-                  isLink
-                />
+                <ViewField label="Info Link" value={initial.info_link} isLink />
                 <ViewField
                   label="Canonical Link"
                   value={initial.canonical_link}

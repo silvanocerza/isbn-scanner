@@ -42,9 +42,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
 
   const [editMode, setEditMode] = useState(false);
-  const [selectedBook, setSelectedBook] = useState<Book | null>(
-    null,
-  );
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [bookWithoutNumber, setBookWithoutNumber] = useState<Book | undefined>(
     undefined,
   );
@@ -55,6 +53,7 @@ function App() {
   const [knownCustomFields, setKnownCustomFields] = useState<string[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [addOpenWithIdentifier, setAddOpenWithIdentifier] = useState("");
+  const [addOpenWithSeries, setAddOpenWithSeries] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>(() => {
     const saved = localStorage.getItem("theme");
@@ -83,10 +82,7 @@ function App() {
             item.thumbnail = URL.createObjectURL(blob);
           } catch (err) {
             item.thumbnail = undefined;
-            console.error(
-              `Failed to load image for ${item.volume_id}`,
-              err,
-            );
+            console.error(`Failed to load image for ${item.volume_id}`, err);
           }
           return item;
         }),
@@ -116,10 +112,7 @@ function App() {
             item.thumbnail = URL.createObjectURL(blob);
           } catch (err) {
             item.thumbnail = undefined;
-            console.error(
-              `Failed to load image for ${item.volume_id}`,
-              err,
-            );
+            console.error(`Failed to load image for ${item.volume_id}`, err);
           }
           return item;
         }),
@@ -239,6 +232,11 @@ function App() {
     setAddOpen(true);
   };
 
+  const handleExistingSeries = async (series: string) => {
+    setAddOpenWithSeries(series);
+    setAddOpen(true);
+  };
+
   const handleExistingEAN = async (book: Book) => {
     // Clone the comic first
     const newVolumeId = await invoke<string>("clone_book", {
@@ -305,10 +303,13 @@ function App() {
       const book = await invoke<Book | null>("find_comic_by_ean", {
         ean: text,
       });
-      if (book) {
-        handleExistingEAN(book);
+
+      if (book && book.series) {
+        await handleExistingSeries(book.series);
+      } else if (book) {
+        await handleExistingEAN(book);
       } else {
-        handleNewEAN(text);
+        await handleNewEAN(text);
       }
     } else if (isOnlyDigits(text)) {
       toast.error("Unknown barcode format");
@@ -433,9 +434,8 @@ function App() {
     const matchesSearch =
       !query ||
       book.title.toLowerCase().includes(query) ||
-      book.authors.some((author) =>
-        author.toLowerCase().includes(query),
-      ) ||
+      book.series?.toLowerCase().includes(query) ||
+      book.authors.some((author) => author.toLowerCase().includes(query)) ||
       book.publisher?.toLowerCase().includes(query) ||
       customValues.some((v) => v.toLowerCase().includes(query)) ||
       book.groups.some((group) => group.toLowerCase().includes(query));
@@ -548,6 +548,7 @@ function App() {
         }}
         onSubmit={handleAddBook}
         initialIdentifier={addOpenWithIdentifier}
+        initialSeries={addOpenWithSeries}
       />
       <SettingsDialog
         open={settingsOpen}

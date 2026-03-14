@@ -93,6 +93,7 @@ pub async fn get_all_books(
 #[tauri::command]
 pub async fn add_book(
     title: String,
+    series: Option<String>,
     number: Option<i64>,
     authors: Option<Vec<String>>,
     groups: Option<Vec<String>>,
@@ -112,6 +113,7 @@ pub async fn add_book(
     let vol_id = crate::db::insert_book(
         pool,
         &title,
+        series.as_deref(),
         number,
         &authors.unwrap_or_default(),
         &groups.unwrap_or_default(),
