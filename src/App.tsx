@@ -51,8 +51,8 @@ function App() {
   const [groups, setGroups] = useState<string[]>([]);
   const [knownGroups, setKnownGroups] = useState<string[]>([]);
   const [knownCustomFields, setKnownCustomFields] = useState<string[]>([]);
-  const [unknownIdentifier, setUnknownIdentifier] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [addOpenWithIdentifier, setAddOpenWithIdentifier] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>(() => {
     const saved = localStorage.getItem("theme");
@@ -233,8 +233,8 @@ function App() {
   };
 
   const handleNewEAN = async (ean: string) => {
-    setUnknownIdentifier(ean);
-    openAddDialog();
+    setAddOpenWithIdentifier(ean);
+    setAddOpen(true);
   };
 
   const handleExistingEAN = async (book: Book) => {
@@ -260,8 +260,8 @@ function App() {
       action: {
         label: "Add",
         onClick: () => {
-          setUnknownIdentifier(identifier);
-          openAddDialog();
+          setAddOpenWithIdentifier(identifier);
+          setAddOpen(true);
         },
       },
       cancel: {
@@ -280,13 +280,16 @@ function App() {
     authors?: string[];
     publisher?: string;
     year?: string;
+    identifier?: string;
   }) => {
     await invoke<string>("add_book", {
-      ...payload,
+      title: payload.title,
+      authors: payload.authors,
+      publisher: payload.publisher,
+      year: payload.year,
       groups,
-      identifier: unknownIdentifier,
+      identifier: payload.identifier,
     });
-    setUnknownIdentifier("");
   };
 
   const handleSetBookNumber = async (volumeId: string, numbers: number[]) => {
@@ -501,8 +504,12 @@ function App() {
 
       <AddBookDialog
         open={addOpen}
-        onClose={() => setAddOpen(false)}
+        onClose={() => {
+          setAddOpen(false);
+          setAddOpenWithIdentifier("");
+        }}
         onSubmit={handleAddBook}
+        initialIdentifier={addOpenWithIdentifier}
       />
       <SettingsDialog
         open={settingsOpen}

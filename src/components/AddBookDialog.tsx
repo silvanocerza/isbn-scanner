@@ -7,6 +7,7 @@ type AddBookPayload = {
   authors?: string[];
   publisher?: string;
   year?: string;
+  identifier?: string;
 };
 
 interface AddBookDialogProps {
@@ -14,6 +15,7 @@ interface AddBookDialogProps {
   onClose: () => void;
   onSubmit: (payload: AddBookPayload) => Promise<void>;
   className?: string;
+  initialIdentifier?: string;
 }
 
 export function AddBookDialog({
@@ -21,18 +23,21 @@ export function AddBookDialog({
   onClose,
   onSubmit,
   className,
+  initialIdentifier = "",
 }: AddBookDialogProps) {
   const [title, setTitle] = useState("");
   const [number, setNumber] = useState("");
   const [authors, setAuthors] = useState("");
   const [publisher, setPublisher] = useState("");
   const [year, setYear] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const titleRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (open) {
+      setIdentifier(initialIdentifier);
       setTimeout(() => titleRef.current?.focus(), 0);
     } else {
       setTitle("");
@@ -40,9 +45,10 @@ export function AddBookDialog({
       setAuthors("");
       setPublisher("");
       setYear("");
+      setIdentifier("");
     }
     setSubmitting(false);
-  }, [open]);
+  }, [open, initialIdentifier]);
 
   if (!open) {
     return null;
@@ -63,6 +69,7 @@ export function AddBookDialog({
           .filter(Boolean),
         publisher: publisher.trim() || undefined,
         year: year.trim() || undefined,
+        identifier: identifier.trim() || undefined,
       };
       await onSubmit(payload);
       onClose();
@@ -106,6 +113,32 @@ export function AddBookDialog({
         </div>
 
         <div className="p-5 space-y-4">
+          <div className="space-y-2">
+            <label
+              htmlFor="identifier"
+              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+            >
+              ISBN / ISSN
+            </label>
+            <input
+              id="identifier"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value.replace(/\D/g, ""))}
+              placeholder="e.g., 9780134685991"
+              className={cn(
+                "w-full rounded-lg border",
+                "bg-white dark:bg-zinc-800",
+                "border-zinc-300 dark:border-zinc-700",
+                "px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100",
+                "placeholder:text-zinc-400",
+                "focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500",
+              )}
+            />
+          </div>
+
           <div className="space-y-2">
             <label
               htmlFor="title"
