@@ -1,6 +1,7 @@
 export interface Book {
   volume_id: string;
   title: string;
+  series?: string | null;
   number?: number;
   publisher?: string;
   published_date?: string | null;

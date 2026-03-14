@@ -159,3 +159,10 @@ pub const MIGRATION005: Migration = Migration {
     ",
     kind: MigrationKind::Up,
 };
+
+pub const MIGRATION006: Migration = Migration {
+    version: 6,
+    description: "add_series",
+    sql: "ALTER TABLE books ADD COLUMN series TEXT;",
+    kind: MigrationKind::Up,
+};

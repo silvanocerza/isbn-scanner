@@ -11,6 +11,7 @@ use crate::utils::get_identifier_type;
 pub struct Book {
     pub volume_id: String,
     pub title: String,
+    pub series: Option<String>,
     pub number: Option<i64>,
     pub publisher: Option<String>,
     pub published_date: Option<String>,
@@ -55,6 +56,7 @@ struct Author {
 pub struct UpdateBookPayload {
     pub volume_id: String,
     pub title: String,
+    pub series: Option<String>,
     pub number: Option<i64>,
     pub publisher: Option<String>,
     pub published_date: Option<String>,
@@ -94,6 +96,7 @@ struct CustomFieldValue {
 struct BookRow {
     pub volume_id: String,
     pub title: String,
+    pub series: Option<String>,
     pub number: Option<i64>,
     pub publisher: Option<String>,
     pub published_date: Option<String>,
@@ -148,7 +151,7 @@ pub async fn fetch_all_books(
     let books = sqlx::query_as::<_, Book>(
         r#"
         SELECT
-            volume_id, title, number, publisher, published_date, description,
+            volume_id, title, series, number, publisher, published_date, description,
             page_count, print_type, maturity_rating, language,
             preview_link, info_link, canonical_link, small_thumbnail,
             thumbnail, country, saleability, is_ebook, viewability,
@@ -232,7 +235,7 @@ pub async fn get_book(
     let mut book = sqlx::query_as::<_, Book>(
         r#"
         SELECT
-            volume_id, title, number, publisher, published_date, description,
+            volume_id, title, series, number, publisher, published_date, description,
             page_count, print_type, maturity_rating, language,
             preview_link, info_link, canonical_link, small_thumbnail,
             thumbnail, country, saleability, is_ebook, viewability,
@@ -311,7 +314,7 @@ pub async fn find_books_containing_title(
     let mut books = sqlx::query_as::<_, Book>(
         r#"
         SELECT
-            volume_id, title, number, publisher, published_date, description,
+            volume_id, title, series, number, publisher, published_date, description,
             page_count, print_type, maturity_rating, language,
             preview_link, info_link, canonical_link, small_thumbnail,
             thumbnail, country, saleability, is_ebook, viewability,
@@ -560,12 +563,13 @@ pub async fn update_book(
     sqlx::query(
         r#"
         UPDATE books
-        SET title = ?, number = ?, publisher = ?, published_date = ?, description = ?,
+        SET title = ?, series = ?, number = ?, publisher = ?, published_date = ?, description = ?,
             page_count = ?, language = ?
         WHERE volume_id = ?
         "#,
     )
     .bind(&payload.title)
+    .bind(payload.series.as_deref())
     .bind(payload.number)
     .bind(payload.publisher.as_deref())
     .bind(payload.published_date.as_deref())
@@ -702,7 +706,7 @@ pub async fn export_books_to_csv(
     let books = sqlx::query_as::<_, BookRow>(
         r#"
         SELECT
-            volume_id, title, number, publisher, published_date, description,
+            volume_id, title, series, number, publisher, published_date, description,
             page_count, print_type, maturity_rating, language,
             preview_link, info_link, canonical_link, small_thumbnail,
             thumbnail, country, saleability, is_ebook, viewability,
@@ -732,6 +736,7 @@ pub async fn export_books_to_csv(
     let mut headers = vec![
         "volume_id",
         "title",
+        "series",
         "number",
         "authors",
         "categories",
@@ -831,6 +836,7 @@ pub async fn export_books_to_csv(
         let mut record = vec![
             book.volume_id.clone(),
             book.title.clone(),
+            book.series.clone().unwrap_or_default(),
             book.number.map(|n| n.to_string()).unwrap_or_default(),
             authors
                 .iter()
@@ -945,7 +951,7 @@ pub async fn clone_book(
     let book = sqlx::query_as::<_, Book>(
         r#"
         SELECT
-            volume_id, title, number, publisher, published_date, description,
+            volume_id, title, series, number, publisher, published_date, description,
             page_count, print_type, maturity_rating, language,
             preview_link, info_link, canonical_link, small_thumbnail,
             thumbnail, country, saleability, is_ebook, viewability,
@@ -966,7 +972,7 @@ pub async fn clone_book(
     sqlx::query(
         r#"
         INSERT INTO books (
-          volume_id, title, number, publisher, published_date,
+          volume_id, title, series, number, publisher, published_date,
           description, page_count, print_type, maturity_rating,
           language, preview_link, info_link, canonical_link,
           small_thumbnail, thumbnail, country, saleability, is_ebook,
@@ -984,6 +990,7 @@ pub async fn clone_book(
     )
     .bind(&new_volume_id)
     .bind(&book.title)
+    .bind(&book.series)
     .bind(book.number)
     .bind(&book.publisher)
     .bind(&book.published_date)
@@ -1084,7 +1091,7 @@ pub async fn clone_book_with_number(
     let book = sqlx::query_as::<_, Book>(
         r#"
         SELECT
-            volume_id, title, number, publisher, published_date, description,
+            volume_id, title, series, number, publisher, published_date, description,
             page_count, print_type, maturity_rating, language,
             preview_link, info_link, canonical_link, small_thumbnail,
             thumbnail, country, saleability, is_ebook, viewability,
@@ -1105,14 +1112,14 @@ pub async fn clone_book_with_number(
     sqlx::query(
         r#"
         INSERT INTO books (
-          volume_id, title, number, publisher, published_date,
+          volume_id, title, series, number, publisher, published_date,
           description, page_count, print_type, maturity_rating,
           language, preview_link, info_link, canonical_link,
           small_thumbnail, thumbnail, country, saleability, is_ebook,
           viewability, embeddable, public_domain, text_to_speech_permission,
           epub_available, pdf_available, web_reader_link, access_view_status, quote_sharing_allowed
         ) VALUES (
-          ?, ?, ?, ?, ?,
+          ?, ?, ?, ?, ?, ?,
           ?, ?, ?, ?,
           ?, ?, ?, ?,
           ?, ?, ?, ?, ?,
@@ -1123,6 +1130,7 @@ pub async fn clone_book_with_number(
     )
     .bind(&new_volume_id)
     .bind(&book.title)
+    .bind(&book.series)
     .bind(Some(number))
     .bind(&book.publisher)
     .bind(&book.published_date)

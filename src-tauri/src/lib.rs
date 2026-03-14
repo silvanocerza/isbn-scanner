@@ -27,6 +27,7 @@ pub fn run() {
         crate::migrations::MIGRATION003,
         crate::migrations::MIGRATION004,
         crate::migrations::MIGRATION005,
+        crate::migrations::MIGRATION006,
     ];
 
     let config =
