@@ -40,10 +40,11 @@ jobs:
       - run: pnpm tauri build
 
       - name: Upload Windows assets
+        shell: pwsh
         run: |
-          for file in src-tauri/target/release/bundle/**/*.msi src-tauri/target/release/bundle/**/*.exe; do
-            gh release upload ${{ github.ref_name }} "$file"
-          done
+          Get-ChildItem -Path src-tauri/target/release/bundle -Include *.msi,*.exe -Recurse | ForEach-Object {
+            gh release upload ${{ github.ref_name }} $_.FullName
+          }
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -68,7 +69,7 @@ jobs:
 
       - name: Upload macOS assets
         run: |
-          for file in src-tauri/target/release/bundle/**/*.dmg src-tauri/target/release/bundle/**/*.app; do
+          for file in src-tauri/target/release/bundle/**/*.dmg; do
             gh release upload ${{ github.ref_name }} "$file"
           done
         env:
